@@ -1,0 +1,2 @@
+2023-01-03 12:42:06,307 - INFO - Start running, host: asghar@asghar-virtual-machine, work_dir: /media/asghar/FutureDet/Projects/FutureDet/tools/models/FutureDetection/nusc_centerpoint_forecast_n0_detection
+2023-01-03 12:42:07,575 - INFO - workflow: [('train', 1)], max: 20 epochs

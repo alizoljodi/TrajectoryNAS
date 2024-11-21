@@ -1,0 +1,5 @@
+2023-01-03 14:10:28,115 - INFO - Start running, host: asghar@asghar-virtual-machine, work_dir: /media/asghar/FutureDet/Projects/FutureDet/tools/models/FutureDetection/nusc_centerpoint_forecast_n0_detection
+2023-01-03 14:10:28,116 - INFO - workflow: [('train', 1)], max: 20 epochs
+2023-01-03 14:13:12,930 - INFO - Epoch [1/20][25/6863]	lr: 0.00010, eta: 10 days, 11:18:02, time: 6.592, data_time: 4.575, transfer_time: 0.076, forward_time: 0.761, loss_parse_time: 0.000 memory: 7011, 
+2023-01-03 14:13:12,930 - INFO - task : ['car'], loss: 12.4682, hm_loss: 7.4998, loc_loss: ['19.8733'], loc_loss_elem: [['2.2119', '1.5402', '3.2937', '1.6255', '2.0291', '1.6812', '2.4486', '3.0952', '3.1662', '3.2168']], num_positive: 43.7600
+

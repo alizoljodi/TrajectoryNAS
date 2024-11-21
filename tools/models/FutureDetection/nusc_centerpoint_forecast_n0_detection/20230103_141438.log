@@ -1,0 +1,38 @@
+2023-01-03 14:14:38,855 - INFO - Start running, host: asghar@asghar-virtual-machine, work_dir: /media/asghar/FutureDet/Projects/FutureDet/tools/models/FutureDetection/nusc_centerpoint_forecast_n0_detection
+2023-01-03 14:14:38,855 - INFO - workflow: [('train', 1)], max: 20 epochs
+2023-01-03 14:16:01,508 - INFO - Epoch [1/20][25/6863]	lr: 0.00010, eta: 5 days, 6:01:39, time: 3.306, data_time: 1.383, transfer_time: 0.064, forward_time: 0.712, loss_parse_time: 0.000 memory: 7011, 
+2023-01-03 14:16:01,512 - INFO - task : ['car'], loss: 12.4754, hm_loss: 7.6323, loc_loss: ['19.3725'], loc_loss_elem: [['2.2263', '1.4474', '3.0733', '1.4710', '1.8892', '1.5014', '2.5142', '3.1057', '3.4604', '3.1794']], num_positive: 43.7600
+
+2023-01-03 14:17:05,846 - INFO - Epoch [1/20][50/6863]	lr: 0.00010, eta: 4 days, 16:02:45, time: 2.574, data_time: 0.438, transfer_time: 0.067, forward_time: 0.811, loss_parse_time: 0.000 memory: 7441, 
+2023-01-03 14:17:05,846 - INFO - task : ['car'], loss: 6.6604, hm_loss: 4.3798, loc_loss: ['9.1225'], loc_loss_elem: [['0.7358', '0.8986', '1.8602', '0.6783', '0.6826', '0.6065', '1.8726', '2.4262', '1.5172', '1.2836']], num_positive: 41.8800
+
+2023-01-03 14:18:04,047 - INFO - Epoch [1/20][75/6863]	lr: 0.00010, eta: 4 days, 8:15:16, time: 2.328, data_time: 0.215, transfer_time: 0.082, forward_time: 0.783, loss_parse_time: 0.000 memory: 7441, 
+2023-01-03 14:18:04,047 - INFO - task : ['car'], loss: 4.6743, hm_loss: 3.1089, loc_loss: ['6.2617'], loc_loss_elem: [['0.5376', '0.5060', '1.3375', '0.3792', '0.5391', '0.4365', '1.3490', '1.8428', '0.9339', '0.9536']], num_positive: 45.3600
+
+2023-01-03 14:19:09,634 - INFO - Epoch [1/20][100/6863]	lr: 0.00010, eta: 4 days, 7:09:38, time: 2.623, data_time: 0.496, transfer_time: 0.098, forward_time: 0.784, loss_parse_time: 0.000 memory: 7441, 
+2023-01-03 14:19:09,634 - INFO - task : ['car'], loss: 4.2811, hm_loss: 2.9991, loc_loss: ['5.1278'], loc_loss_elem: [['0.3855', '0.5016', '1.0440', '0.3556', '0.3786', '0.3115', '1.0701', '1.7232', '0.7469', '0.8455']], num_positive: 41.1600
+
+2023-01-03 14:20:15,396 - INFO - Epoch [1/20][125/6863]	lr: 0.00010, eta: 4 days, 6:33:26, time: 2.631, data_time: 0.555, transfer_time: 0.086, forward_time: 0.769, loss_parse_time: 0.000 memory: 7441, 
+2023-01-03 14:20:15,396 - INFO - task : ['car'], loss: 3.9512, hm_loss: 2.8936, loc_loss: ['4.2307'], loc_loss_elem: [['0.3470', '0.3133', '0.8486', '0.2243', '0.3062', '0.2523', '1.1170', '1.5832', '0.6649', '0.7341']], num_positive: 40.7200
+
+2023-01-03 14:21:16,246 - INFO - Epoch [1/20][150/6863]	lr: 0.00010, eta: 4 days, 4:53:56, time: 2.434, data_time: 0.345, transfer_time: 0.068, forward_time: 0.774, loss_parse_time: 0.000 memory: 7454, 
+2023-01-03 14:21:16,246 - INFO - task : ['car'], loss: 3.8012, hm_loss: 2.7902, loc_loss: ['4.0440'], loc_loss_elem: [['0.3338', '0.3527', '0.7316', '0.2193', '0.2712', '0.2247', '1.0551', '1.5952', '0.6225', '0.7583']], num_positive: 44.1600
+
+2023-01-03 14:22:18,903 - INFO - Epoch [1/20][175/6863]	lr: 0.00010, eta: 4 days, 4:06:05, time: 2.506, data_time: 0.404, transfer_time: 0.085, forward_time: 0.754, loss_parse_time: 0.000 memory: 7454, 
+2023-01-03 14:22:18,904 - INFO - task : ['car'], loss: 3.8564, hm_loss: 2.7665, loc_loss: ['4.3593'], loc_loss_elem: [['0.3759', '0.3755', '0.7403', '0.2215', '0.3421', '0.2835', '1.1546', '1.6515', '0.6928', '0.7666']], num_positive: 46.6400
+
+2023-01-03 14:23:25,885 - INFO - Epoch [1/20][200/6863]	lr: 0.00010, eta: 4 days, 4:19:28, time: 2.679, data_time: 0.585, transfer_time: 0.083, forward_time: 0.769, loss_parse_time: 0.000 memory: 7454, 
+2023-01-03 14:23:25,885 - INFO - task : ['car'], loss: 3.6665, hm_loss: 2.7029, loc_loss: ['3.8546'], loc_loss_elem: [['0.3279', '0.3237', '0.6371', '0.1893', '0.3058', '0.2084', '1.0372', '1.3648', '0.6685', '0.7135']], num_positive: 47.3600
+
+2023-01-03 14:24:26,181 - INFO - Epoch [1/20][225/6863]	lr: 0.00010, eta: 4 days, 3:21:43, time: 2.412, data_time: 0.234, transfer_time: 0.108, forward_time: 0.804, loss_parse_time: 0.000 memory: 7454, 
+2023-01-03 14:24:26,182 - INFO - task : ['car'], loss: 3.7105, hm_loss: 2.6357, loc_loss: ['4.2995'], loc_loss_elem: [['0.3739', '0.3362', '0.8073', '0.2154', '0.2776', '0.3015', '0.9333', '1.4386', '0.6827', '0.8304']], num_positive: 48.6400
+
+2023-01-03 14:25:32,624 - INFO - Epoch [1/20][250/6863]	lr: 0.00010, eta: 4 days, 3:31:27, time: 2.658, data_time: 0.582, transfer_time: 0.088, forward_time: 0.770, loss_parse_time: 0.000 memory: 7454, 
+2023-01-03 14:25:32,624 - INFO - task : ['car'], loss: 3.4701, hm_loss: 2.6123, loc_loss: ['3.4311'], loc_loss_elem: [['0.2831', '0.2860', '0.5809', '0.1611', '0.1961', '0.1812', '0.7743', '1.3785', '0.6040', '0.7080']], num_positive: 47.4400
+
+2023-01-03 14:26:33,599 - INFO - Epoch [1/20][275/6863]	lr: 0.00010, eta: 4 days, 2:53:48, time: 2.439, data_time: 0.267, transfer_time: 0.099, forward_time: 0.788, loss_parse_time: 0.000 memory: 7454, 
+2023-01-03 14:26:33,605 - INFO - task : ['car'], loss: 3.6271, hm_loss: 2.6501, loc_loss: ['3.9081'], loc_loss_elem: [['0.3101', '0.3165', '0.7650', '0.1804', '0.2152', '0.2183', '0.9513', '1.6294', '0.6367', '0.7497']], num_positive: 41.6000
+
+2023-01-03 14:27:41,877 - INFO - Epoch [1/20][300/6863]	lr: 0.00010, eta: 4 days, 3:17:49, time: 2.731, data_time: 0.585, transfer_time: 0.121, forward_time: 0.789, loss_parse_time: 0.000 memory: 7454, 
+2023-01-03 14:27:41,878 - INFO - task : ['car'], loss: 3.7222, hm_loss: 2.6404, loc_loss: ['4.3270'], loc_loss_elem: [['0.3211', '0.3704', '0.7094', '0.3024', '0.3031', '0.2617', '1.2122', '1.4958', '0.7341', '0.7831']], num_positive: 39.3600
+

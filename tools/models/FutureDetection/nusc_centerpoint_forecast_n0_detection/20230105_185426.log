@@ -1,0 +1,2 @@
+2023-01-05 18:54:26,801 - INFO - Start running, host: mli01@mli01-System, work_dir: /home/mli01/Project/FutureDet-2023-01-03/tools/models/FutureDetection/nusc_centerpoint_forecast_n0_detection
+2023-01-05 18:54:26,801 - INFO - workflow: [('train', 1)], max: 20 epochs

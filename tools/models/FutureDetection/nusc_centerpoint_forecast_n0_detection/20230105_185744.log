@@ -1,0 +1,8 @@
+2023-01-05 18:57:44,808 - INFO - Start running, host: mli01@mli01-System, work_dir: /home/mli01/Project/FutureDet-2023-01-03/tools/models/FutureDetection/nusc_centerpoint_forecast_n0_detection
+2023-01-05 18:57:44,808 - INFO - workflow: [('train', 1)], max: 20 epochs
+2023-01-05 18:58:49,821 - INFO - Epoch [1/20][25/81]	lr: 0.00010, eta: 1:09:07, time: 2.600, data_time: 0.962, transfer_time: 0.057, forward_time: 0.226, loss_parse_time: 0.000 memory: 5403, 
+2023-01-05 18:58:49,821 - INFO - task : ['car'], loss: 12.1882, hm_loss: 6.7056, loc_loss: ['21.9303'], loc_loss_elem: [['2.4938', '1.7184', '3.2239', '2.0341', '2.4029', '2.0211', '3.6039', '4.4974', '3.0435', '3.3724']], num_positive: 48.1600
+
+2023-01-05 18:59:29,351 - INFO - Epoch [1/20][50/81]	lr: 0.00011, eta: 0:54:42, time: 1.581, data_time: 1.021, transfer_time: 0.058, forward_time: 0.177, loss_parse_time: 0.000 memory: 5403, 
+2023-01-05 18:59:29,352 - INFO - task : ['car'], loss: 6.2347, hm_loss: 4.0838, loc_loss: ['8.6038'], loc_loss_elem: [['0.8611', '0.6428', '1.6314', '0.5496', '0.7583', '0.5815', '2.7311', '3.2838', '1.0800', '1.2960']], num_positive: 46.2000
+
