@@ -10,10 +10,7 @@ from nuscenes.prediction import PredictHelper
 
 class PredictionConfig:
 
-    def __init__(self,
-                 metrics: List[Metric],
-                 seconds: int = 6,
-                 frequency: int = 2):
+    def __init__(self, metrics: List[Metric], seconds: int = 6, frequency: int = 2):
         """
         Data class that specifies the prediction evaluation settings.
         Initialized with:
@@ -26,19 +23,25 @@ class PredictionConfig:
         self.frequency = frequency  # Hz
 
     def serialize(self) -> Dict[str, Any]:
-        """ Serialize instance into json-friendly format. """
+        """Serialize instance into json-friendly format."""
 
-        return {'metrics': [metric.serialize() for metric in self.metrics],
-                'seconds': self.seconds}
+        return {
+            "metrics": [metric.serialize() for metric in self.metrics],
+            "seconds": self.seconds,
+        }
 
     @classmethod
     def deserialize(cls, content: Dict[str, Any], helper: PredictHelper):
-        """ Initialize from serialized dictionary. """
-        return cls([deserialize_metric(metric, helper) for metric in content['metrics']],
-                   seconds=content['seconds'])
+        """Initialize from serialized dictionary."""
+        return cls(
+            [deserialize_metric(metric, helper) for metric in content["metrics"]],
+            seconds=content["seconds"],
+        )
 
 
-def load_prediction_config(helper: PredictHelper, config_name: str = 'predict_2020_icra.json') -> PredictionConfig:
+def load_prediction_config(
+    helper: PredictHelper, config_name: str = "predict_2020_icra.json"
+) -> PredictionConfig:
     """
     Loads a PredictionConfig from json file stored in eval/prediction/configs.
     :param helper: Instance of PredictHelper. Needed for OffRoadRate metric.
@@ -47,12 +50,10 @@ def load_prediction_config(helper: PredictHelper, config_name: str = 'predict_20
     """
     this_dir = os.path.dirname(os.path.abspath(__file__))
     cfg_path = os.path.join(this_dir, "configs", config_name)
-    assert os.path.exists(cfg_path), f'Requested unknown configuration {cfg_path}'
+    assert os.path.exists(cfg_path), f"Requested unknown configuration {cfg_path}"
 
     # Load config file and deserialize it.
-    with open(cfg_path, 'r') as f:
+    with open(cfg_path, "r") as f:
         config = json.load(f)
 
     return PredictionConfig.deserialize(config, helper)
-
-

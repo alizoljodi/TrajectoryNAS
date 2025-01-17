@@ -9,8 +9,9 @@ import numpy as np
 from nuscenes.prediction.input_representation.interface import Combinator
 
 
-def add_foreground_to_image(base_image: np.ndarray,
-                            foreground_image: np.ndarray) -> np.ndarray:
+def add_foreground_to_image(
+    base_image: np.ndarray, foreground_image: np.ndarray
+) -> np.ndarray:
     """
     Overlays a foreground image on top of a base image without mixing colors. Type uint8.
     :param base_image: Image that will be the background. Type uint8.
@@ -19,12 +20,16 @@ def add_foreground_to_image(base_image: np.ndarray,
     """
 
     if not base_image.shape == foreground_image.shape:
-        raise ValueError("base_image and foreground image must have the same shape."
-                         " Received {} and {}".format(base_image.shape, foreground_image.shape))
+        raise ValueError(
+            "base_image and foreground image must have the same shape."
+            " Received {} and {}".format(base_image.shape, foreground_image.shape)
+        )
 
     if not (base_image.dtype == "uint8" and foreground_image.dtype == "uint8"):
-        raise ValueError("base_image and foreground image must be of type 'uint8'."
-                         " Received {} and {}".format(base_image.dtype, foreground_image.dtype))
+        raise ValueError(
+            "base_image and foreground image must be of type 'uint8'."
+            " Received {} and {}".format(base_image.dtype, foreground_image.dtype)
+        )
 
     img2gray = cv2.cvtColor(foreground_image, cv2.COLOR_BGR2GRAY)
     _, mask = cv2.threshold(img2gray, 0, 255, cv2.THRESH_BINARY)

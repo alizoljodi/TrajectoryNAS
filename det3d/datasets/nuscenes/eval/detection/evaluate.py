@@ -15,29 +15,59 @@ from nuscenes import NuScenes
 from nuscenes.eval.common.config import config_factory
 from nuscenes.eval.common.data_classes import EvalBoxes, EvalBox
 from nuscenes.utils.data_classes import Box
-from nuscenes.eval.common.loaders import load_prediction, load_gt, add_center_dist, filter_eval_boxes
-from nuscenes.eval.detection.algo import accumulate, calc_ap, calc_fap_mr, calc_ar, calc_tp, calc_fap, calc_far, calc_aap, calc_aar
+from nuscenes.eval.common.loaders import (
+    load_prediction,
+    load_gt,
+    add_center_dist,
+    filter_eval_boxes,
+)
+from nuscenes.eval.detection.algo import (
+    accumulate,
+    calc_ap,
+    calc_fap_mr,
+    calc_ar,
+    calc_tp,
+    calc_fap,
+    calc_far,
+    calc_aap,
+    calc_aar,
+)
 from nuscenes.eval.detection.constants import TP_METRICS
-from nuscenes.eval.detection.data_classes import DetectionConfig, DetectionMetrics, DetectionBox, DetectionMetricDataList, DetectionMetricData
+from nuscenes.eval.detection.data_classes import (
+    DetectionConfig,
+    DetectionMetrics,
+    DetectionBox,
+    DetectionMetricDataList,
+    DetectionMetricData,
+)
 from pyquaternion import Quaternion
 import pickle
 from copy import deepcopy
-from nuscenes.eval.detection.render import summary_plot, class_pr_curve, class_tp_curve, dist_pr_curve, visualize_sample
-import torch 
-from tqdm import tqdm 
+from nuscenes.eval.detection.render import (
+    summary_plot,
+    class_pr_curve,
+    class_tp_curve,
+    dist_pr_curve,
+    visualize_sample,
+)
+import torch
+from tqdm import tqdm
 from nuscenes.utils.geometry_utils import view_points
 from shapely.geometry import Polygon
 
 import pdb
-from itertools import tee 
+from itertools import tee
+
 
 def box_center(boxes):
-    center_box = np.array([box.translation for box in boxes]) 
+    center_box = np.array([box.translation for box in boxes])
     return center_box
 
+
 def box_scores(boxes):
-    box = np.array([box.forecast_score for box in boxes]) 
+    box = np.array([box.forecast_score for box in boxes])
     return box
+
 
 def window(iterable, size):
     iters = tee(iterable, size)
@@ -47,23 +77,27 @@ def window(iterable, size):
 
     return zip(*iters)
 
+
 def get_time(nusc, src_token, dst_token):
-    time_last = 1e-6 * nusc.get('sample', src_token)["timestamp"]
-    time_first = 1e-6 * nusc.get('sample', dst_token)["timestamp"]
+    time_last = 1e-6 * nusc.get("sample", src_token)["timestamp"]
+    time_first = 1e-6 * nusc.get("sample", dst_token)["timestamp"]
     time_diff = time_first - time_last
 
-    return time_diff 
+    return time_diff
+
 
 def distance_matrix(A, B, squared=False):
     M = A.shape[0]
     N = B.shape[0]
 
-    assert A.shape[1] == B.shape[1], f"The number of components for vectors in A \
+    assert (
+        A.shape[1] == B.shape[1]
+    ), f"The number of components for vectors in A \
         {A.shape[1]} does not match that of B {B.shape[1]}!"
 
-    A_dots = (A*A).sum(axis=1).reshape((M,1))*np.ones(shape=(1,N))
-    B_dots = (B*B).sum(axis=1)*np.ones(shape=(M,1))
-    D_squared =  A_dots + B_dots -2*A.dot(B.T)
+    A_dots = (A * A).sum(axis=1).reshape((M, 1)) * np.ones(shape=(1, N))
+    B_dots = (B * B).sum(axis=1) * np.ones(shape=(M, 1))
+    D_squared = A_dots + B_dots - 2 * A.dot(B.T)
 
     if squared == False:
         zero_mask = np.less(D_squared, 0.0)
@@ -72,24 +106,44 @@ def distance_matrix(A, B, squared=False):
 
     return D_squared
 
-def box2d_iou(boxA, boxB): 
-    A = Box(center=boxA.translation, size=boxA.size, orientation=Quaternion(boxA.rotation))
-    B = Box(center=boxB.translation, size=boxB.size, orientation=Quaternion(boxB.rotation))
+
+def box2d_iou(boxA, boxB):
+    A = Box(
+        center=boxA.translation, size=boxA.size, orientation=Quaternion(boxA.rotation)
+    )
+    B = Box(
+        center=boxB.translation, size=boxB.size, orientation=Quaternion(boxB.rotation)
+    )
 
     cornersA = view_points(A.corners(), np.eye(4), normalize=False)[:2, :].T
     cornersB = view_points(B.corners(), np.eye(4), normalize=False)[:2, :].T
 
-    polyA = Polygon([(cornersA[0][0], cornersA[0][1]), (cornersA[1][0], cornersA[1][1]), (cornersA[5][0], cornersA[5][1]), (cornersA[4][0], cornersA[4][1])])
-    polyB = Polygon([(cornersB[0][0], cornersB[0][1]), (cornersB[1][0], cornersB[1][1]), (cornersB[5][0], cornersB[5][1]), (cornersB[4][0], cornersB[4][1])])
+    polyA = Polygon(
+        [
+            (cornersA[0][0], cornersA[0][1]),
+            (cornersA[1][0], cornersA[1][1]),
+            (cornersA[5][0], cornersA[5][1]),
+            (cornersA[4][0], cornersA[4][1]),
+        ]
+    )
+    polyB = Polygon(
+        [
+            (cornersB[0][0], cornersB[0][1]),
+            (cornersB[1][0], cornersB[1][1]),
+            (cornersB[5][0], cornersB[5][1]),
+            (cornersB[4][0], cornersB[4][1]),
+        ]
+    )
 
-    intersection = polyA.intersection(polyB).area 
-    
+    intersection = polyA.intersection(polyB).area
+
     if intersection > 0:
         union = polyA.union(polyB).area
         return intersection / union
-        
+
     else:
-        return 0 
+        return 0
+
 
 def center_distance(gt_box: EvalBox, pred_box: EvalBox) -> float:
     """
@@ -98,11 +152,17 @@ def center_distance(gt_box: EvalBox, pred_box: EvalBox) -> float:
     :param pred_box: Predicted sample.
     :return: L2 distance.
     """
-    return np.linalg.norm(np.array(pred_box.translation[:2]) - np.array(gt_box.translation[:2]))
+    return np.linalg.norm(
+        np.array(pred_box.translation[:2]) - np.array(gt_box.translation[:2])
+    )
+
 
 def trajectory(nusc, box: DetectionBox) -> float:
     target = box.forecast_boxes[-1]
-    time = [get_time(nusc, token[0], token[1]) for token in window([b.sample_token for b in box.forecast_boxes], 2)]
+    time = [
+        get_time(nusc, token[0], token[1])
+        for token in window([b.sample_token for b in box.forecast_boxes], 2)
+    ]
 
     static_forecast = deepcopy(box.forecast_boxes[0])
 
@@ -114,7 +174,7 @@ def trajectory(nusc, box: DetectionBox) -> float:
 
     disp = np.sum(list(map(lambda x: np.array(list(vel) + [0]) * x, time)), axis=0)
     linear_forecast.translation = linear_forecast.translation + disp
-    
+
     if box2d_iou(target, linear_forecast) > 0:
         return "linear"
 
@@ -122,12 +182,15 @@ def trajectory(nusc, box: DetectionBox) -> float:
 
 
 def serialize_box(box):
-    box = DetectionBox(sample_token=box["sample_token"],
-                        translation=box["translation"],
-                        size=box["size"],
-                        rotation=box["rotation"],
-                        velocity=box["velocity"])
+    box = DetectionBox(
+        sample_token=box["sample_token"],
+        translation=box["translation"],
+        size=box["size"],
+        rotation=box["rotation"],
+        velocity=box["velocity"],
+    )
     return box
+
 
 class DetectionEval:
     """
@@ -150,21 +213,23 @@ class DetectionEval:
     Please see https://www.nuscenes.org/object-detection for more details.
     """
 
-    def __init__(self,
-                 nusc: NuScenes,
-                 config: DetectionConfig,
-                 result_path: str,
-                 eval_set: str,
-                 output_dir: str = None,
-                 verbose: bool = True,
-                 forecast: int = 7,
-                 tp_pct: float = 0.6,
-                 static_only: bool = False,
-                 cohort_analysis: bool = False,
-                 topK: int = 1,
-                 root: str = "/ssd0/nperi/nuScenes", 
-                 association_oracle=False,
-                 nogroup=False):
+    def __init__(
+        self,
+        nusc: NuScenes,
+        config: DetectionConfig,
+        result_path: str,
+        eval_set: str,
+        output_dir: str = None,
+        verbose: bool = True,
+        forecast: int = 7,
+        tp_pct: float = 0.6,
+        static_only: bool = False,
+        cohort_analysis: bool = False,
+        topK: int = 1,
+        root: str = "/ssd0/nperi/nuScenes",
+        association_oracle=False,
+        nogroup=False,
+    ):
         """
         Initialize a DetectionEval object.
         :param nusc: A NuScenes object.
@@ -189,10 +254,10 @@ class DetectionEval:
         self.nogroup = nogroup
 
         # Check result file exists.
-        assert os.path.exists(result_path), 'Error: The result file does not exist!'
+        assert os.path.exists(result_path), "Error: The result file does not exist!"
 
         # Make dirs.
-        self.plot_dir = os.path.join(self.output_dir, 'plots')
+        self.plot_dir = os.path.join(self.output_dir, "plots")
         if not os.path.isdir(self.output_dir):
             os.makedirs(self.output_dir)
         if not os.path.isdir(self.plot_dir):
@@ -200,16 +265,27 @@ class DetectionEval:
 
         # Load data.
         if verbose:
-            print('Initializing nuScenes detection evaluation')
+            print("Initializing nuScenes detection evaluation")
 
-        self.pred_boxes, self.meta = load_prediction(self.result_path, self.cfg.max_boxes_per_sample, DetectionBox, verbose=verbose)
+        self.pred_boxes, self.meta = load_prediction(
+            self.result_path,
+            self.cfg.max_boxes_per_sample,
+            DetectionBox,
+            verbose=verbose,
+        )
 
         if os.path.isfile(root + "/gt.pkl"):
             self.gt_boxes = pickle.load(open(root + "/gt.pkl", "rb"))
         else:
-            self.gt_boxes = load_gt(self.nusc, self.eval_set, DetectionBox, verbose=verbose, forecast=forecast)
+            self.gt_boxes = load_gt(
+                self.nusc,
+                self.eval_set,
+                DetectionBox,
+                verbose=verbose,
+                forecast=forecast,
+            )
             pickle.dump(self.gt_boxes, open(root + "/gt.pkl", "wb"))
-        
+
         sample_tokens = [s["token"] for s in nusc.sample]
 
         print("Deserializing forecast data")
@@ -219,10 +295,11 @@ class DetectionEval:
 
             for box in self.gt_boxes.boxes[sample_token]:
                 box.forecast_boxes = [serialize_box(box) for box in box.forecast_boxes]
-                
-        assert set(self.pred_boxes.sample_tokens) == set(self.gt_boxes.sample_tokens), \
-            "Samples in split doesn't match samples in predictions."
-        
+
+        assert set(self.pred_boxes.sample_tokens) == set(
+            self.gt_boxes.sample_tokens
+        ), "Samples in split doesn't match samples in predictions."
+
         if self.cohort_analysis:
             for sample_token in self.pred_boxes.boxes.keys():
                 for box in self.pred_boxes.boxes[sample_token]:
@@ -250,11 +327,10 @@ class DetectionEval:
                 for boxes in self.pred_boxes.boxes[sample_token]:
                     if trajectory(nusc, boxes) != "static":
                         continue
-                    
+
                     static_boxes.append(boxes)
 
                 self.pred_boxes.boxes[sample_token] = static_boxes
-                
 
         # Add center distances.
         self.pred_boxes = add_center_dist(nusc, self.pred_boxes)
@@ -262,15 +338,19 @@ class DetectionEval:
 
         # Filter boxes (distance, points per box, etc.).
         if verbose:
-            print('Filtering predictions')
-        self.pred_boxes = filter_eval_boxes(nusc, self.pred_boxes, self.cfg.class_range, verbose=verbose)
+            print("Filtering predictions")
+        self.pred_boxes = filter_eval_boxes(
+            nusc, self.pred_boxes, self.cfg.class_range, verbose=verbose
+        )
         if verbose:
-            print('Filtering ground truth annotations')
-        self.gt_boxes = filter_eval_boxes(nusc, self.gt_boxes, self.cfg.class_range, verbose=verbose)
-        
+            print("Filtering ground truth annotations")
+        self.gt_boxes = filter_eval_boxes(
+            nusc, self.gt_boxes, self.cfg.class_range, verbose=verbose
+        )
+
         ########################################################################################################
-        max_thresh_det = {"car" : 0.5, "pedestrian" : 0.125}
-        max_thresh_forecast = {"car" : 1, "pedestrian" : 0.25}
+        max_thresh_det = {"car": 0.5, "pedestrian": 0.125}
+        max_thresh_forecast = {"car": 1, "pedestrian": 0.25}
 
         pred_boxes_topK = {}
         for class_name in ["car", "pedestrian"]:
@@ -279,32 +359,49 @@ class DetectionEval:
                 if sample_token not in pred_boxes_topK:
                     pred_boxes_topK[sample_token] = []
 
-                pred_boxes = [box for box in self.pred_boxes.boxes[sample_token] if class_name in box.detection_name]
+                pred_boxes = [
+                    box
+                    for box in self.pred_boxes.boxes[sample_token]
+                    if class_name in box.detection_name
+                ]
                 pred_confs = [box.detection_score for box in pred_boxes]
-                sorted_pred_boxes = [b for _, b in sorted(zip(pred_confs, pred_boxes), key=lambda x: x[0], reverse=True)]
+                sorted_pred_boxes = [
+                    b
+                    for _, b in sorted(
+                        zip(pred_confs, pred_boxes), key=lambda x: x[0], reverse=True
+                    )
+                ]
 
                 groups = set([box.forecast_id for box in sorted_pred_boxes])
 
                 for group in groups:
                     boxes = [box for box in pred_boxes if box.forecast_id == group]
                     scores = box_scores(boxes)
-                    boxes = [b for _, b in sorted(zip(scores, boxes), key=lambda x: x[0], reverse=True)][:topK]
+                    boxes = [
+                        b
+                        for _, b in sorted(
+                            zip(scores, boxes), key=lambda x: x[0], reverse=True
+                        )
+                    ][:topK]
 
                     test_box = deepcopy(boxes[0])
 
                     if topK == 1:
                         pred_boxes_topK[sample_token].append(test_box)
-                        continue 
+                        continue
 
                     min_dist = np.inf
                     match_gt_idx = None
 
                     for gt_idx, gt_box in enumerate(self.gt_boxes.boxes[sample_token]):
                         if class_name not in gt_box.detection_name:
-                            continue 
+                            continue
 
                         this_distance = center_distance(gt_box, test_box)
-                        if this_distance < min_dist and (sample_token, gt_idx) not in taken:
+                        if (
+                            this_distance < min_dist
+                            and (sample_token, gt_idx) not in taken
+                        ):
                             min_dist = this_distance
                             match_gt_idx = gt_idx
 
@@ -312,16 +409,18 @@ class DetectionEval:
                         taken.add((sample_token, match_gt_idx))
                     else:
                         pred_boxes_topK[sample_token].append(test_box)
-                        continue 
+                        continue
 
-                    min_fde = np.inf 
+                    min_fde = np.inf
                     match_box = None
                     if match_gt_idx is not None:
                         for box in boxes:
                             match_gt = self.gt_boxes.boxes[sample_token][match_gt_idx]
-                            fde = center_distance(match_gt.forecast_boxes[-1], box.forecast_boxes[-1])
+                            fde = center_distance(
+                                match_gt.forecast_boxes[-1], box.forecast_boxes[-1]
+                            )
                             if fde < min_fde:
-                                min_fde = fde 
+                                min_fde = fde
                                 match_box = deepcopy(box)
 
                         if min_fde < max_thresh_forecast[class_name]:
@@ -333,23 +432,24 @@ class DetectionEval:
 
                     else:
                         pred_boxes_topK[sample_token].append(test_box)
-        
+
         pred_count = 0
         for sample_token in self.gt_boxes.boxes.keys():
             self.pred_boxes.boxes[sample_token] = pred_boxes_topK[sample_token]
             pred_count += len(pred_boxes_topK[sample_token])
 
         print("Predicted Trajectories @ K={}: {}".format(topK, pred_count))
-        
+
         ########################################################################
         self.sample_tokens = self.gt_boxes.sample_tokens
 
         for sample_token in self.sample_tokens:
             boxes = [box for box in self.pred_boxes.boxes[sample_token]]
-            sorted_boxes = sorted(boxes, key= lambda x : x.detection_score, reverse=True)
+            sorted_boxes = sorted(boxes, key=lambda x: x.detection_score, reverse=True)
 
-            self.pred_boxes.boxes[sample_token] = sorted_boxes[:self.cfg.max_boxes_per_sample]
-
+            self.pred_boxes.boxes[sample_token] = sorted_boxes[
+                : self.cfg.max_boxes_per_sample
+            ]
 
     def evaluate(self) -> Tuple[DetectionMetrics, DetectionMetricDataList]:
         """
@@ -362,32 +462,51 @@ class DetectionEval:
         # Step 1: Accumulate metric data for all classes and distance thresholds.
         # -----------------------------------
         if self.verbose:
-            print('Accumulating metric data...')
+            print("Accumulating metric data...")
         metric_data_list = DetectionMetricDataList()
         for class_name in tqdm(self.cfg.class_names):
             for dist_th in self.cfg.dist_ths:
-                md = accumulate(self.nusc, self.gt_boxes, self.pred_boxes, class_name, self.cfg.dist_fcn_callable, dist_th, self.forecast, self.topK, self.cohort_analysis, self.association_oracle)
+                md = accumulate(
+                    self.nusc,
+                    self.gt_boxes,
+                    self.pred_boxes,
+                    class_name,
+                    self.cfg.dist_fcn_callable,
+                    dist_th,
+                    self.forecast,
+                    self.topK,
+                    self.cohort_analysis,
+                    self.association_oracle,
+                )
                 metric_data_list.set(class_name, dist_th, md)
 
         # -----------------------------------
         # Step 2: Calculate metrics from the data.
         # -----------------------------------
         if self.verbose:
-            print('Calculating metrics...')
+            print("Calculating metrics...")
         metrics = DetectionMetrics(self.cfg)
         for class_name in self.cfg.class_names:
             # Compute APs.
             for dist_th in self.cfg.dist_ths:
                 metric_data = metric_data_list[(class_name, dist_th)]
-                ap = calc_ap(deepcopy(metric_data), self.cfg.min_recall, self.cfg.min_precision)
-                fap_mr = calc_fap_mr(deepcopy(metric_data), self.cfg.min_recall, self.cfg.min_precision)
+                ap = calc_ap(
+                    deepcopy(metric_data), self.cfg.min_recall, self.cfg.min_precision
+                )
+                fap_mr = calc_fap_mr(
+                    deepcopy(metric_data), self.cfg.min_recall, self.cfg.min_precision
+                )
 
                 ar = calc_ar(deepcopy(metric_data))
 
-                fap = calc_fap(deepcopy(metric_data), self.cfg.min_recall, self.cfg.min_precision)
+                fap = calc_fap(
+                    deepcopy(metric_data), self.cfg.min_recall, self.cfg.min_precision
+                )
                 far = calc_far(deepcopy(metric_data))
 
-                aap = calc_aap(deepcopy(metric_data), self.cfg.min_recall, self.cfg.min_precision)
+                aap = calc_aap(
+                    deepcopy(metric_data), self.cfg.min_recall, self.cfg.min_precision
+                )
                 aar = calc_aar(deepcopy(metric_data))
 
                 metrics.add_label_ap(class_name, dist_th, ap)
@@ -402,12 +521,21 @@ class DetectionEval:
             # Compute TP metrics.
             for metric_name in TP_METRICS:
                 metric_data = metric_data_list[(class_name, self.cfg.dist_th_tp)]
-                if class_name in ['traffic_cone'] and metric_name in ['attr_err', 'vel_err', 'orient_err']:
+                if class_name in ["traffic_cone"] and metric_name in [
+                    "attr_err",
+                    "vel_err",
+                    "orient_err",
+                ]:
                     tp = np.nan
-                elif class_name in ['barrier'] and metric_name in ['attr_err', 'vel_err']:
+                elif class_name in ["barrier"] and metric_name in [
+                    "attr_err",
+                    "vel_err",
+                ]:
                     tp = np.nan
                 else:
-                    tp = calc_tp(metric_data, self.cfg.min_recall, metric_name, self.tp_pct)
+                    tp = calc_tp(
+                        metric_data, self.cfg.min_recall, metric_name, self.tp_pct
+                    )
                 metrics.add_label_tp(class_name, metric_name, tp)
 
         # Compute evaluation time.
@@ -415,36 +543,68 @@ class DetectionEval:
 
         return metrics, metric_data_list
 
-    def render(self, metrics: DetectionMetrics, md_list: DetectionMetricDataList, cohort_analysis=False) -> None:
+    def render(
+        self,
+        metrics: DetectionMetrics,
+        md_list: DetectionMetricDataList,
+        cohort_analysis=False,
+    ) -> None:
         """
         Renders various PR and TP curves.
         :param metrics: DetectionMetrics instance.
         :param md_list: DetectionMetricDataList instance.
         """
         if self.verbose:
-            print('Rendering PR and TP curves')
+            print("Rendering PR and TP curves")
 
         def savepath(name):
-            return os.path.join(self.plot_dir, name + '.pdf')
+            return os.path.join(self.plot_dir, name + ".pdf")
 
-        summary_plot(md_list, metrics, min_precision=self.cfg.min_precision, min_recall=self.cfg.min_recall,
-                     dist_th_tp=self.cfg.dist_th_tp, savepath=savepath('summary'), cohort_analysis=cohort_analysis)
+        summary_plot(
+            md_list,
+            metrics,
+            min_precision=self.cfg.min_precision,
+            min_recall=self.cfg.min_recall,
+            dist_th_tp=self.cfg.dist_th_tp,
+            savepath=savepath("summary"),
+            cohort_analysis=cohort_analysis,
+        )
 
         for detection_name in self.cfg.class_names:
-            class_pr_curve(md_list, metrics, detection_name, self.cfg.min_precision, self.cfg.min_recall,
-                           savepath=savepath(detection_name + '_pr'))
+            class_pr_curve(
+                md_list,
+                metrics,
+                detection_name,
+                self.cfg.min_precision,
+                self.cfg.min_recall,
+                savepath=savepath(detection_name + "_pr"),
+            )
 
-            class_tp_curve(md_list, metrics, detection_name, self.cfg.min_recall, self.cfg.dist_th_tp,
-                           savepath=savepath(detection_name + '_tp'))
+            class_tp_curve(
+                md_list,
+                metrics,
+                detection_name,
+                self.cfg.min_recall,
+                self.cfg.dist_th_tp,
+                savepath=savepath(detection_name + "_tp"),
+            )
 
         for dist_th in self.cfg.dist_ths:
-            dist_pr_curve(md_list, metrics, dist_th, self.cfg.min_precision, self.cfg.min_recall,
-                          savepath=savepath('dist_pr_' + str(dist_th)))
+            dist_pr_curve(
+                md_list,
+                metrics,
+                dist_th,
+                self.cfg.min_precision,
+                self.cfg.min_recall,
+                savepath=savepath("dist_pr_" + str(dist_th)),
+            )
 
-    def main(self,
-             plot_examples: int = 0,
-             render_curves: bool = True,
-             cohort_analysis: bool = False) -> Dict[str, Any]:
+    def main(
+        self,
+        plot_examples: int = 0,
+        render_curves: bool = True,
+        cohort_analysis: bool = False,
+    ) -> Dict[str, Any]:
         """
         Main function that loads the evaluation code, visualizes samples, runs the evaluation and renders stat plots.
         :param plot_examples: How many example visualizations to write to disk.
@@ -459,10 +619,10 @@ class DetectionEval:
             sample_tokens = sample_tokens[:plot_examples]
 
             # Visualize samples.
-            #example_dir = os.path.join(self.output_dir, 'examples')
-            #if not os.path.isdir(example_dir):
+            # example_dir = os.path.join(self.output_dir, 'examples')
+            # if not os.path.isdir(example_dir):
             #    os.mkdir(example_dir)
-            #for sample_token in sample_tokens:
+            # for sample_token in sample_tokens:
             #    visualize_sample(self.nusc,
             #                     sample_token,
             #                     self.gt_boxes if self.eval_set != 'test' else EvalBoxes(),
@@ -480,83 +640,94 @@ class DetectionEval:
 
         # Dump the metric data, meta and metrics to disk.
         if self.verbose:
-            print('Saving metrics to: %s' % self.output_dir)
+            print("Saving metrics to: %s" % self.output_dir)
         metrics_summary = metrics.serialize()
-        metrics_summary['meta'] = self.meta.copy()
-        
-        with open(os.path.join(self.output_dir, 'metrics_summary.json'), 'w') as f:
+        metrics_summary["meta"] = self.meta.copy()
+
+        with open(os.path.join(self.output_dir, "metrics_summary.json"), "w") as f:
             json.dump(metrics_summary, f, indent=2)
-        with open(os.path.join(self.output_dir, 'metrics_details.json'), 'w') as f:
+        with open(os.path.join(self.output_dir, "metrics_details.json"), "w") as f:
             json.dump(metric_data_list.serialize(), f, indent=2)
 
-
         # Print high-level metrics.
-        print('mAP: %.4f' % (metrics_summary['mean_ap']))
-        print('mFAP_MR: %.4f' % (metrics_summary['mean_fap_mr']))
+        print("mAP: %.4f" % (metrics_summary["mean_ap"]))
+        print("mFAP_MR: %.4f" % (metrics_summary["mean_fap_mr"]))
 
-        print('mAR: %.4f' % (metrics_summary['mean_ar']))
+        print("mAR: %.4f" % (metrics_summary["mean_ar"]))
 
-        print('mFAP: %.4f' % (metrics_summary['mean_fap']))
-        print('mFAR: %.4f' % (metrics_summary['mean_far']))
+        print("mFAP: %.4f" % (metrics_summary["mean_fap"]))
+        print("mFAR: %.4f" % (metrics_summary["mean_far"]))
 
-        print('mAAP: %.4f' % (metrics_summary['mean_aap']))
-        print('mAAR: %.4f' % (metrics_summary['mean_aar']))
+        print("mAAP: %.4f" % (metrics_summary["mean_aap"]))
+        print("mAAR: %.4f" % (metrics_summary["mean_aar"]))
 
         err_name_mapping = {
-            'trans_err': 'mATE',
-            'scale_err': 'mASE',
-            'orient_err': 'mAOE',
-            'vel_err': 'mAVE',
-            'attr_err': 'mAAE',
-            'avg_disp_err' : 'mADE',
-            'final_disp_err' : 'mFDE',
-            'miss_rate' : 'mMR',
+            "trans_err": "mATE",
+            "scale_err": "mASE",
+            "orient_err": "mAOE",
+            "vel_err": "mAVE",
+            "attr_err": "mAAE",
+            "avg_disp_err": "mADE",
+            "final_disp_err": "mFDE",
+            "miss_rate": "mMR",
             #'reverse_avg_disp_err' : 'mRADE',
             #'reverse_final_disp_err' : 'mRFDE',
             #'reverse_miss_rate' : 'mRMR',
         }
-        for tp_name, tp_val in metrics_summary['tp_errors'].items():
-            print('%s: %.4f' % (err_name_mapping[tp_name], tp_val))
-        print('NDS: %.4f' % (metrics_summary['nd_score']))
-        print('Eval time: %.1fs' % metrics_summary['eval_time'])
+        for tp_name, tp_val in metrics_summary["tp_errors"].items():
+            print("%s: %.4f" % (err_name_mapping[tp_name], tp_val))
+        print("NDS: %.4f" % (metrics_summary["nd_score"]))
+        print("Eval time: %.1fs" % metrics_summary["eval_time"])
 
         # Print per-class metrics.
         print()
-        print('Per-class results:')
-        print('Object Class\tAP\tFAP_MR\tAR\tFAP\tFAR\tAAP\tAAR\tATE\tASE\tAOE\tAVE\tAAE\tADE\tFDE\tMR')
-        class_aps = metrics_summary['mean_dist_aps']
-        class_faps_mr = metrics_summary['mean_dist_faps_mr']
+        print("Per-class results:")
+        print(
+            "Object Class\tAP\tFAP_MR\tAR\tFAP\tFAR\tAAP\tAAR\tATE\tASE\tAOE\tAVE\tAAE\tADE\tFDE\tMR"
+        )
+        class_aps = metrics_summary["mean_dist_aps"]
+        class_faps_mr = metrics_summary["mean_dist_faps_mr"]
 
-        class_ars = metrics_summary['mean_dist_ars']
+        class_ars = metrics_summary["mean_dist_ars"]
 
-        class_faps = metrics_summary['mean_dist_faps']
-        class_fars = metrics_summary['mean_dist_fars']
+        class_faps = metrics_summary["mean_dist_faps"]
+        class_fars = metrics_summary["mean_dist_fars"]
 
-        class_aaps = metrics_summary['mean_dist_aaps']
-        class_aars = metrics_summary['mean_dist_aars']
+        class_aaps = metrics_summary["mean_dist_aaps"]
+        class_aars = metrics_summary["mean_dist_aars"]
 
-        class_tps = metrics_summary['label_tp_errors']
+        class_tps = metrics_summary["label_tp_errors"]
         for class_name in class_aps.keys():
-            print('%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f'
-                  % (class_name, class_aps[class_name], class_faps_mr[class_name], class_ars[class_name], class_faps[class_name], class_fars[class_name], class_aaps[class_name], class_aars[class_name],
-                     class_tps[class_name]['trans_err'],
-                     class_tps[class_name]['scale_err'],
-                     class_tps[class_name]['orient_err'],
-                     class_tps[class_name]['vel_err'],
-                     class_tps[class_name]['attr_err'],
-                     class_tps[class_name]['avg_disp_err'],
-                     class_tps[class_name]['final_disp_err'],
-                     class_tps[class_name]['miss_rate'],
-                     #class_tps[class_name]['reverse_avg_disp_err'],
-                     #class_tps[class_name]['reverse_final_disp_err'],
-                     #class_tps[class_name]['reverse_miss_rate'],
-                     ))
+            print(
+                "%s\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f"
+                % (
+                    class_name,
+                    class_aps[class_name],
+                    class_faps_mr[class_name],
+                    class_ars[class_name],
+                    class_faps[class_name],
+                    class_fars[class_name],
+                    class_aaps[class_name],
+                    class_aars[class_name],
+                    class_tps[class_name]["trans_err"],
+                    class_tps[class_name]["scale_err"],
+                    class_tps[class_name]["orient_err"],
+                    class_tps[class_name]["vel_err"],
+                    class_tps[class_name]["attr_err"],
+                    class_tps[class_name]["avg_disp_err"],
+                    class_tps[class_name]["final_disp_err"],
+                    class_tps[class_name]["miss_rate"],
+                    # class_tps[class_name]['reverse_avg_disp_err'],
+                    # class_tps[class_name]['reverse_final_disp_err'],
+                    # class_tps[class_name]['reverse_miss_rate'],
+                )
+            )
 
         return metrics_summary
 
 
 class NuScenesEval(DetectionEval):
-    print('in this place')
+    print("in this place")
     """
     Dummy class for backward-compatibility. Same as DetectionEval.
     """
@@ -565,26 +736,57 @@ class NuScenesEval(DetectionEval):
 if __name__ == "__main__":
 
     # Settings.
-    parser = argparse.ArgumentParser(description='Evaluate nuScenes detection results.',
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('result_path', type=str, help='The submission as a JSON file.')
-    parser.add_argument('--output_dir', type=str, default='~/nuscenes-metrics',
-                        help='Folder to store result metrics, graphs and example visualizations.')
-    parser.add_argument('--eval_set', type=str, default='val',
-                        help='Which dataset split to evaluate on, train, val or test.')
-    parser.add_argument('--dataroot', type=str, default='/data/sets/nuscenes',
-                        help='Default nuScenes data directory.')
-    parser.add_argument('--version', type=str, default='v1.0-trainval',
-                        help='Which version of the nuScenes dataset to evaluate on, e.g. v1.0-trainval.')
-    parser.add_argument('--config_path', type=str, default='',
-                        help='Path to the configuration file.'
-                             'If no path given, the CVPR 2019 configuration will be used.')
-    parser.add_argument('--plot_examples', type=int, default=10,
-                        help='How many example visualizations to write to disk.')
-    parser.add_argument('--render_curves', type=int, default=1,
-                        help='Whether to render PR and TP curves to disk.')
-    parser.add_argument('--verbose', type=int, default=1,
-                        help='Whether to print to stdout.')
+    parser = argparse.ArgumentParser(
+        description="Evaluate nuScenes detection results.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("result_path", type=str, help="The submission as a JSON file.")
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="~/nuscenes-metrics",
+        help="Folder to store result metrics, graphs and example visualizations.",
+    )
+    parser.add_argument(
+        "--eval_set",
+        type=str,
+        default="val",
+        help="Which dataset split to evaluate on, train, val or test.",
+    )
+    parser.add_argument(
+        "--dataroot",
+        type=str,
+        default="/data/sets/nuscenes",
+        help="Default nuScenes data directory.",
+    )
+    parser.add_argument(
+        "--version",
+        type=str,
+        default="v1.0-trainval",
+        help="Which version of the nuScenes dataset to evaluate on, e.g. v1.0-trainval.",
+    )
+    parser.add_argument(
+        "--config_path",
+        type=str,
+        default="",
+        help="Path to the configuration file."
+        "If no path given, the CVPR 2019 configuration will be used.",
+    )
+    parser.add_argument(
+        "--plot_examples",
+        type=int,
+        default=10,
+        help="How many example visualizations to write to disk.",
+    )
+    parser.add_argument(
+        "--render_curves",
+        type=int,
+        default=1,
+        help="Whether to render PR and TP curves to disk.",
+    )
+    parser.add_argument(
+        "--verbose", type=int, default=1, help="Whether to print to stdout."
+    )
     args = parser.parse_args()
 
     result_path_ = os.path.expanduser(args.result_path)
@@ -597,13 +799,19 @@ if __name__ == "__main__":
     render_curves_ = bool(args.render_curves)
     verbose_ = bool(args.verbose)
 
-    if config_path == '':
-        cfg_ = config_factory('detection_cvpr_2019')
+    if config_path == "":
+        cfg_ = config_factory("detection_cvpr_2019")
     else:
-        with open(config_path, 'r') as _f:
+        with open(config_path, "r") as _f:
             cfg_ = DetectionConfig.deserialize(json.load(_f))
 
     nusc_ = NuScenes(version=version_, verbose=verbose_, dataroot=dataroot_)
-    nusc_eval = DetectionEval(nusc_, config=cfg_, result_path=result_path_, eval_set=eval_set_,
-                              output_dir=output_dir_, verbose=verbose_)
+    nusc_eval = DetectionEval(
+        nusc_,
+        config=cfg_,
+        result_path=result_path_,
+        eval_set=eval_set_,
+        output_dir=output_dir_,
+        verbose=verbose_,
+    )
     nusc_eval.main(plot_examples=plot_examples_, render_curves=render_curves_)

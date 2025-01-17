@@ -3,13 +3,17 @@ import json
 import os
 import sys
 
-sys.path.append('/media/asghar/media/FutureDet-NAS')
-sys.path.append('/media/asghar/media/FutureDet-NAS/Core/nuscenes-forecast/python-sdk')
-from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning, NumbaWarning
+sys.path.append("/media/asghar/media/FutureDet-NAS")
+sys.path.append("/media/asghar/media/FutureDet-NAS/Core/nuscenes-forecast/python-sdk")
+from numba.core.errors import (
+    NumbaDeprecationWarning,
+    NumbaPendingDeprecationWarning,
+    NumbaWarning,
+)
 import warnings
 
-warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
-warnings.simplefilter('ignore', category=NumbaWarning)
+warnings.simplefilter("ignore", category=NumbaDeprecationWarning)
+warnings.simplefilter("ignore", category=NumbaWarning)
 
 import numpy as np
 import torch
@@ -31,23 +35,41 @@ import pdb
 # --seed 0
 # configs/centerpoint/nusc_centerpoint_forecast_n0_detection.py
 # '--work_dir models/FutureDetection/nusc_centerpoint_forecast_n0_detection'
-'python  ./tools/train.py configs/centerpoint/nusc_centerpoint_forecast_n0_detection.py --seed 0 --work_dir models/FutureDetection/nusc_centerpoint_forecast_n0_detection'
+"python  ./tools/train.py configs/centerpoint/nusc_centerpoint_forecast_n0_detection.py --seed 0 --work_dir models/FutureDetection/nusc_centerpoint_forecast_n0_detection"
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Train a detector")
     parser.add_argument("config", help="train config file path")
     parser.add_argument("--work_dir", help="the dir to save logs and models")
     # parser.add_argument("config", default='../configs/centerpoint/nusc_centerpoint_forecast_n0_detection.py',help="train config file path")
-    #parser.add_argument("--work_dir", default='models/FutureDetection/nusc_centerpoint_forecast_n0_detection', help="the dir to save logs and model")
+    # parser.add_argument("--work_dir", default='models/FutureDetection/nusc_centerpoint_forecast_n0_detection', help="the dir to save logs and model")
     parser.add_argument("--resume_from", help="the checkpoint file to resume from")
-    parser.add_argument("--validate",default=True ,action="store_true", help="whether to evaluate the checkpoint during training")
-    parser.add_argument("--gpus", type=int, default=1,
-                        help="number of gpus to use " "(only applicable to non-distributed training)", )
+    parser.add_argument(
+        "--validate",
+        default=True,
+        action="store_true",
+        help="whether to evaluate the checkpoint during training",
+    )
+    parser.add_argument(
+        "--gpus",
+        type=int,
+        default=1,
+        help="number of gpus to use " "(only applicable to non-distributed training)",
+    )
     parser.add_argument("--seed", type=int, default=None, help="random seed")
-    parser.add_argument("--launcher", choices=["none", "pytorch", "slurm", "mpi"], default="none",
-                        help="job launcher", )
+    parser.add_argument(
+        "--launcher",
+        choices=["none", "pytorch", "slurm", "mpi"],
+        default="none",
+        help="job launcher",
+    )
     parser.add_argument("--local_rank", type=int, default=0)
-    parser.add_argument("--autoscale-lr", action="store_true",
-                        help="automatically scale lr with the number of gpus", )
+    parser.add_argument(
+        "--autoscale-lr",
+        action="store_true",
+        help="automatically scale lr with the number of gpus",
+    )
     args = parser.parse_args()
     if "LOCAL_RANK" not in os.environ:
         os.environ["LOCAL_RANK"] = str(args.local_rank)
@@ -66,7 +88,7 @@ def main():
     cfg.local_rank = args.local_rank
     torch.cuda.set_device(args.local_rank)
     print(args.work_dir)
-    #sys.exit()
+    # sys.exit()
     # update configs according to CLI args
     if args.work_dir is not None:
         cfg.work_dir = args.work_dir
@@ -104,16 +126,16 @@ def main():
         logger.info("Set random seed to {}".format(args.seed))
         set_random_seed(args.seed)
 
-    #print(cfg.model)
-    #sys.exit()
-    structure=[]
-    #print(type(cfg.model))
-    #sys.exit()
-    model = build_detector(cfg.model, train_cfg=cfg.train_cfg, test_cfg=cfg.test_cfg,structure=structure)
-    #print(model)
-    #sys.exit()
-
-
+    # print(cfg.model)
+    # sys.exit()
+    structure = []
+    # print(type(cfg.model))
+    # sys.exit()
+    model = build_detector(
+        cfg.model, train_cfg=cfg.train_cfg, test_cfg=cfg.test_cfg, structure=structure
+    )
+    # print(model)
+    # sys.exit()
 
     datasets = [build_dataset(cfg.data.train)]
 
@@ -123,9 +145,7 @@ def main():
     if cfg.checkpoint_config is not None:
         # save det3d version, config file content and class names in
         # checkpoints as meta data
-        cfg.checkpoint_config.meta = dict(
-            config=cfg.text, CLASSES=datasets[0].CLASSES
-        )
+        cfg.checkpoint_config.meta = dict(config=cfg.text, CLASSES=datasets[0].CLASSES)
 
     # add an attribute for visualization convenience
     model.CLASSES = datasets[0].CLASSES
@@ -137,7 +157,6 @@ def main():
         validate=args.validate,
         logger=logger,
     )
-
 
 
 if __name__ == "__main__":

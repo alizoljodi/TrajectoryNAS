@@ -10,6 +10,7 @@ https://github.com/xinshuoweng/AB3DMOT/blob/master/evaluation/evaluate_kitti3dmo
 py-motmetrics at:
 https://github.com/cheind/py-motmetrics
 """
+
 import os
 from typing import List, Dict, Callable, Tuple
 
@@ -26,18 +27,20 @@ from nuscenes.eval.tracking.utils import print_threshold_metrics, create_motmetr
 
 
 class TrackingEvaluation(object):
-    def __init__(self,
-                 tracks_gt: Dict[str, Dict[int, List[TrackingBox]]],
-                 tracks_pred: Dict[str, Dict[int, List[TrackingBox]]],
-                 class_name: str,
-                 dist_fcn: Callable,
-                 dist_th_tp: float,
-                 min_recall: float,
-                 num_thresholds: int,
-                 metric_worst: Dict[str, float],
-                 verbose: bool = True,
-                 output_dir: str = None,
-                 render_classes: List[str] = None):
+    def __init__(
+        self,
+        tracks_gt: Dict[str, Dict[int, List[TrackingBox]]],
+        tracks_pred: Dict[str, Dict[int, List[TrackingBox]]],
+        class_name: str,
+        dist_fcn: Callable,
+        dist_th_tp: float,
+        min_recall: float,
+        num_thresholds: int,
+        metric_worst: Dict[str, float],
+        verbose: bool = True,
+        output_dir: str = None,
+        render_classes: List[str] = None,
+    ):
         """
         Create a TrackingEvaluation object which computes all metrics for a given class.
         :param tracks_gt: The ground-truth tracks.
@@ -77,12 +80,13 @@ class TrackingEvaluation(object):
 
         # Specify threshold naming pattern. Note that no two thresholds may have the same name.
         def name_gen(_threshold):
-            return 'thr_%.4f' % _threshold
+            return "thr_%.4f" % _threshold
+
         self.name_gen = name_gen
 
         # Check that metric definitions are consistent.
         for metric_name in MOT_METRIC_MAP.values():
-            assert metric_name == '' or metric_name in TRACKING_METRICS
+            assert metric_name == "" or metric_name in TRACKING_METRICS
 
     def accumulate(self) -> TrackingMetricData:
         """
@@ -91,7 +95,7 @@ class TrackingEvaluation(object):
         """
         # Init.
         if self.verbose:
-            print('Computing metrics for class %s...\n' % self.class_name)
+            print("Computing metrics for class %s...\n" % self.class_name)
         accumulators = []
         thresh_metrics = []
         md = TrackingMetricData()
@@ -119,7 +123,7 @@ class TrackingEvaluation(object):
         md.confidence = thresholds
         md.recall_hypo = recalls
         if self.verbose:
-            print('Computed thresholds\n')
+            print("Computed thresholds\n")
 
         for t, threshold in enumerate(thresholds):
             # If recall threshold is not achieved, we assign the worst possible value in AMOTA and AMOTP.
@@ -137,7 +141,9 @@ class TrackingEvaluation(object):
 
             # Compute metrics for current threshold.
             thresh_name = self.name_gen(threshold)
-            thresh_summary = mh.compute(acc, metrics=MOT_METRIC_MAP.keys(), name=thresh_name)
+            thresh_summary = mh.compute(
+                acc, metrics=MOT_METRIC_MAP.keys(), name=thresh_name
+            )
             thresh_metrics.append(thresh_summary)
 
             # Print metrics to stdout.
@@ -153,7 +159,10 @@ class TrackingEvaluation(object):
         # Sanity checks.
         unachieved_thresholds = np.sum(np.isnan(thresholds))
         duplicate_thresholds = len(thresholds) - len(np.unique(thresholds))
-        assert unachieved_thresholds + duplicate_thresholds + len(thresh_metrics) == self.num_thresholds
+        assert (
+            unachieved_thresholds + duplicate_thresholds + len(thresh_metrics)
+            == self.num_thresholds
+        )
 
         # Figure out how many times each threshold should be repeated.
         valid_thresholds = [t for t in thresholds if not np.isnan(t)]
@@ -161,9 +170,9 @@ class TrackingEvaluation(object):
         rep_counts = [np.sum(thresholds == t) for t in np.unique(valid_thresholds)]
 
         # Store all traditional metrics.
-        for (mot_name, metric_name) in MOT_METRIC_MAP.items():
+        for mot_name, metric_name in MOT_METRIC_MAP.items():
             # Skip metrics which we don't output.
-            if metric_name == '':
+            if metric_name == "":
                 continue
 
             # Retrieve and store values for current metric.
@@ -171,12 +180,14 @@ class TrackingEvaluation(object):
                 # Set all the worst possible value if no recall threshold is achieved.
                 worst = self.metric_worst[metric_name]
                 if worst == -1:
-                    if metric_name == 'ml':
+                    if metric_name == "ml":
                         worst = len(gt_track_ids)
-                    elif metric_name in ['gt', 'fn']:
+                    elif metric_name in ["gt", "fn"]:
                         worst = gt_box_count
-                    elif metric_name in ['fp', 'ids', 'frag']:
-                        worst = np.nan  # We can't know how these error types are distributed.
+                    elif metric_name in ["fp", "ids", "frag"]:
+                        worst = (
+                            np.nan
+                        )  # We can't know how these error types are distributed.
                     else:
                         raise NotImplementedError
 
@@ -187,7 +198,9 @@ class TrackingEvaluation(object):
 
                 # If a threshold occurred more than once, duplicate the metric values.
                 assert len(rep_counts) == len(values)
-                values = np.concatenate([([v] * r) for (v, r) in zip(values, rep_counts)])
+                values = np.concatenate(
+                    [([v] * r) for (v, r) in zip(values, rep_counts)]
+                )
 
                 # Pad values with nans for unachieved recall thresholds.
                 all_values = [np.nan] * unachieved_thresholds
@@ -198,7 +211,9 @@ class TrackingEvaluation(object):
 
         return md
 
-    def accumulate_threshold(self, threshold: float = None) -> Tuple[pandas.DataFrame, List[float]]:
+    def accumulate_threshold(
+        self, threshold: float = None
+    ) -> Tuple[pandas.DataFrame, List[float]]:
         """
         Accumulate metrics for a particular recall threshold of the current class.
         The scores are only computed if threshold is set to None. This is used to infer the recall thresholds.
@@ -206,11 +221,15 @@ class TrackingEvaluation(object):
         :returns: (The MOTAccumulator that stores all the hits/misses/etc, Scores for each TP).
         """
         accs = []
-        scores = []  # The scores of the TPs. These are used to determine the recall thresholds initially.
+        scores = (
+            []
+        )  # The scores of the TPs. These are used to determine the recall thresholds initially.
 
         # Go through all frames and associate ground truth and tracker results.
         # Groundtruth and tracker contain lists for every single frame containing lists detections.
-        for scene_id in tqdm.tqdm(self.tracks_gt.keys(), disable=not self.verbose, leave=False):
+        for scene_id in tqdm.tqdm(
+            self.tracks_gt.keys(), disable=not self.verbose, leave=False
+        ):
 
             # Initialize accumulator and frame_id for this scene
             acc = MOTAccumulatorCustom()
@@ -222,7 +241,9 @@ class TrackingEvaluation(object):
 
             # Visualize the boxes in this frame.
             if self.class_name in self.render_classes and threshold is None:
-                save_path = os.path.join(self.output_dir, 'render', str(scene_id), self.class_name)
+                save_path = os.path.join(
+                    self.output_dir, "render", str(scene_id), self.class_name
+                )
                 os.makedirs(save_path, exist_ok=True)
                 renderer = TrackingRenderer(save_path)
             else:
@@ -233,11 +254,15 @@ class TrackingEvaluation(object):
                 frame_gt = scene_tracks_gt[timestamp]
                 frame_pred = scene_tracks_pred[timestamp]
                 frame_gt = [f for f in frame_gt if f.tracking_name == self.class_name]
-                frame_pred = [f for f in frame_pred if f.tracking_name == self.class_name]
+                frame_pred = [
+                    f for f in frame_pred if f.tracking_name == self.class_name
+                ]
 
                 # Threshold boxes by score. Note that the scores were previously averaged over the whole track.
                 if threshold is not None:
-                    frame_pred = [f for f in frame_pred if f.tracking_score >= threshold]
+                    frame_pred = [
+                        f for f in frame_pred if f.tracking_score >= threshold
+                    ]
 
                 # Abort if there are neither GT nor pred boxes.
                 gt_ids = [gg.tracking_id for gg in frame_gt]
@@ -247,13 +272,15 @@ class TrackingEvaluation(object):
 
                 # Calculate distances.
                 # Note that the distance function is hard-coded to achieve significant speedups via vectorization.
-                assert self.dist_fcn.__name__ == 'center_distance'
+                assert self.dist_fcn.__name__ == "center_distance"
                 if len(frame_gt) == 0 or len(frame_pred) == 0:
                     distances = np.ones((0, 0))
                 else:
                     gt_boxes = np.array([b.translation[:2] for b in frame_gt])
                     pred_boxes = np.array([b.translation[:2] for b in frame_pred])
-                    distances = sklearn.metrics.pairwise.euclidean_distances(gt_boxes, pred_boxes)
+                    distances = sklearn.metrics.pairwise.euclidean_distances(
+                        gt_boxes, pred_boxes
+                    )
 
                 # Distances that are larger than the threshold won't be associated.
                 assert len(distances) == 0 or not np.all(np.isnan(distances))
@@ -266,9 +293,13 @@ class TrackingEvaluation(object):
                 # Store scores of matches, which are used to determine recall thresholds.
                 if threshold is None:
                     events = acc.events.loc[frame_id]
-                    matches = events[events.Type == 'MATCH']
+                    matches = events[events.Type == "MATCH"]
                     match_ids = matches.HId.values
-                    match_scores = [tt.tracking_score for tt in frame_pred if tt.tracking_id in match_ids]
+                    match_scores = [
+                        tt.tracking_score
+                        for tt in frame_pred
+                        if tt.tracking_id in match_ids
+                    ]
                     scores.extend(match_scores)
                 else:
                     events = None

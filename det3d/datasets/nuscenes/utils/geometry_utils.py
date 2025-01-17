@@ -9,10 +9,13 @@ from pyquaternion import Quaternion
 
 
 class BoxVisibility(IntEnum):
-    """ Enumerates the various level of box visibility in an image """
+    """Enumerates the various level of box visibility in an image"""
+
     ALL = 0  # Requires all corners are inside the image.
     ANY = 1  # Requires at least one corner visible in the image.
-    NONE = 2  # Requires no corners to be inside, i.e. box can be fully outside the image.
+    NONE = (
+        2  # Requires no corners to be inside, i.e. box can be fully outside the image.
+    )
 
 
 def view_points(points: np.ndarray, view: np.ndarray, normalize: bool) -> np.ndarray:
@@ -39,7 +42,7 @@ def view_points(points: np.ndarray, view: np.ndarray, normalize: bool) -> np.nda
     assert points.shape[0] == 3
 
     viewpad = np.eye(4)
-    viewpad[:view.shape[0], :view.shape[1]] = view
+    viewpad[: view.shape[0], : view.shape[1]] = view
 
     nbr_points = points.shape[1]
 
@@ -54,7 +57,12 @@ def view_points(points: np.ndarray, view: np.ndarray, normalize: bool) -> np.nda
     return points
 
 
-def box_in_image(box, intrinsic: np.ndarray, imsize: Tuple[int, int], vis_level: int = BoxVisibility.ANY) -> bool:
+def box_in_image(
+    box,
+    intrinsic: np.ndarray,
+    imsize: Tuple[int, int],
+    vis_level: int = BoxVisibility.ANY,
+) -> bool:
     """
     Check if a box is visible inside an image without accounting for occlusions.
     :param box: The box to be checked.
@@ -72,7 +80,9 @@ def box_in_image(box, intrinsic: np.ndarray, imsize: Tuple[int, int], vis_level:
     visible = np.logical_and(visible, corners_img[1, :] > 0)
     visible = np.logical_and(visible, corners_3d[2, :] > 1)
 
-    in_front = corners_3d[2, :] > 0.1  # True if a corner is at least 0.1 meter in front of the camera.
+    in_front = (
+        corners_3d[2, :] > 0.1
+    )  # True if a corner is at least 0.1 meter in front of the camera.
 
     if vis_level == BoxVisibility.ALL:
         return all(visible) and all(in_front)
@@ -84,9 +94,11 @@ def box_in_image(box, intrinsic: np.ndarray, imsize: Tuple[int, int], vis_level:
         raise ValueError("vis_level: {} not valid".format(vis_level))
 
 
-def transform_matrix(translation: np.ndarray = np.array([0, 0, 0]),
-                     rotation: Quaternion = Quaternion([1, 0, 0, 0]),
-                     inverse: bool = False) -> np.ndarray:
+def transform_matrix(
+    translation: np.ndarray = np.array([0, 0, 0]),
+    rotation: Quaternion = Quaternion([1, 0, 0, 0]),
+    inverse: bool = False,
+) -> np.ndarray:
     """
     Convert pose to transformation matrix.
     :param translation: <np.float32: 3>. Translation in x, y, z.
@@ -108,7 +120,7 @@ def transform_matrix(translation: np.ndarray = np.array([0, 0, 0]),
     return tm
 
 
-def points_in_box(box: 'Box', points: np.ndarray, wlh_factor: float = 1.0):
+def points_in_box(box: "Box", points: np.ndarray, wlh_factor: float = 1.0):
     """
     Checks whether points are inside the box.
 

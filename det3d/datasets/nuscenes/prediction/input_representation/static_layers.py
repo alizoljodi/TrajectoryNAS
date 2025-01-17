@@ -13,9 +13,12 @@ from nuscenes.map_expansion.map_api import NuScenesMap
 from nuscenes.prediction import PredictHelper
 from nuscenes.prediction.helper import angle_of_rotation, angle_diff
 from nuscenes.prediction.input_representation.combinators import Rasterizer
-from nuscenes.prediction.input_representation.interface import \
-    StaticLayerRepresentation
-from nuscenes.prediction.input_representation.utils import get_crops, get_rotation_matrix, convert_to_pixel_coords
+from nuscenes.prediction.input_representation.interface import StaticLayerRepresentation
+from nuscenes.prediction.input_representation.utils import (
+    get_crops,
+    get_rotation_matrix,
+    convert_to_pixel_coords,
+)
 
 Color = Tuple[float, float, float]
 
@@ -28,23 +31,26 @@ def load_all_maps(helper: PredictHelper) -> Dict[str, NuScenesMap]:
     """
     dataroot = helper.data.dataroot
 
-    json_files = filter(lambda f: "json" in f and "prediction_scenes" not in f,
-                        os.listdir(os.path.join(dataroot, "maps")))
+    json_files = filter(
+        lambda f: "json" in f and "prediction_scenes" not in f,
+        os.listdir(os.path.join(dataroot, "maps")),
+    )
     maps = {}
 
     for map_file in json_files:
 
         map_name = str(map_file.split(".")[0])
 
-        print(f'static_layers.py - Loading Map: {map_name}')
+        print(f"static_layers.py - Loading Map: {map_name}")
 
         maps[map_name] = NuScenesMap(dataroot, map_name=map_name)
 
     return maps
 
 
-def get_patchbox(x_in_meters: float, y_in_meters: float,
-                 image_side_length: float) -> Tuple[float, float, float, float]:
+def get_patchbox(
+    x_in_meters: float, y_in_meters: float, image_side_length: float
+) -> Tuple[float, float, float, float]:
     """
     Gets the patchbox representing the area to crop the base image.
     :param x_in_meters: X coordinate.
@@ -89,9 +95,13 @@ def correct_yaw(yaw: float) -> float:
     return yaw
 
 
-def get_lanes_in_radius(x: float, y: float, radius: float,
-                        discretization_meters: float,
-                        map_api: NuScenesMap) -> Dict[str, List[Tuple[float, float, float]]]:
+def get_lanes_in_radius(
+    x: float,
+    y: float,
+    radius: float,
+    discretization_meters: float,
+    map_api: NuScenesMap,
+) -> Dict[str, List[Tuple[float, float, float]]]:
     """
     Retrieves all the lanes and lane connectors in a radius of the query point.
     :param x: x-coordinate of point in global coordinates.
@@ -104,15 +114,14 @@ def get_lanes_in_radius(x: float, y: float, radius: float,
     :return: Mapping from lane id to list of coordinate tuples in global coordinate system.
     """
 
-    lanes = map_api.get_records_in_radius(x, y, radius, ['lane', 'lane_connector'])
-    lanes = lanes['lane'] + lanes['lane_connector']
+    lanes = map_api.get_records_in_radius(x, y, radius, ["lane", "lane_connector"])
+    lanes = lanes["lane"] + lanes["lane_connector"]
     lanes = map_api.discretize_lanes(lanes, discretization_meters)
 
     return lanes
 
 
-def color_by_yaw(agent_yaw_in_radians: float,
-                 lane_yaw_in_radians: float) -> Color:
+def color_by_yaw(agent_yaw_in_radians: float, lane_yaw_in_radians: float) -> Color:
     """
     Color the pose one the lane based on its yaw difference to the agent yaw.
     :param agent_yaw_in_radians: Yaw of the agent with respect to the global frame.
@@ -120,26 +129,28 @@ def color_by_yaw(agent_yaw_in_radians: float,
     """
 
     # By adding pi, lanes in the same direction as the agent are colored blue.
-    angle = angle_diff(agent_yaw_in_radians, lane_yaw_in_radians, 2*np.pi) + np.pi
+    angle = angle_diff(agent_yaw_in_radians, lane_yaw_in_radians, 2 * np.pi) + np.pi
 
     # Convert to degrees per colorsys requirement
-    angle = angle * 180/np.pi
+    angle = angle * 180 / np.pi
 
-    normalized_rgb_color = colorsys.hsv_to_rgb(angle/360, 1., 1.)
+    normalized_rgb_color = colorsys.hsv_to_rgb(angle / 360, 1.0, 1.0)
 
-    color = [color*255 for color in normalized_rgb_color]
+    color = [color * 255 for color in normalized_rgb_color]
 
     # To make the return type consistent with Color definition
     return color[0], color[1], color[2]
 
 
-def draw_lanes_on_image(image: np.ndarray,
-                        lanes: Dict[str, List[Tuple[float, float, float]]],
-                        agent_global_coords: Tuple[float, float],
-                        agent_yaw_in_radians: float,
-                        agent_pixels: Tuple[int, int],
-                        resolution: float,
-                        color_function: Callable[[float, float], Color] = color_by_yaw) -> np.ndarray:
+def draw_lanes_on_image(
+    image: np.ndarray,
+    lanes: Dict[str, List[Tuple[float, float, float]]],
+    agent_global_coords: Tuple[float, float],
+    agent_yaw_in_radians: float,
+    agent_pixels: Tuple[int, int],
+    resolution: float,
+    color_function: Callable[[float, float], Color] = color_by_yaw,
+) -> np.ndarray:
     """
     Draws lanes on image.
     :param image: Image to draw lanes on. Preferably all-black or all-white image.
@@ -157,10 +168,12 @@ def draw_lanes_on_image(image: np.ndarray,
 
         for start_pose, end_pose in zip(poses_along_lane[:-1], poses_along_lane[1:]):
 
-            start_pixels = convert_to_pixel_coords(start_pose[:2], agent_global_coords,
-                                                   agent_pixels, resolution)
-            end_pixels = convert_to_pixel_coords(end_pose[:2], agent_global_coords,
-                                                 agent_pixels, resolution)
+            start_pixels = convert_to_pixel_coords(
+                start_pose[:2], agent_global_coords, agent_pixels, resolution
+            )
+            end_pixels = convert_to_pixel_coords(
+                end_pose[:2], agent_global_coords, agent_pixels, resolution
+            )
 
             start_pixels = (start_pixels[1], start_pixels[0])
             end_pixels = (end_pixels[1], end_pixels[0])
@@ -169,20 +182,22 @@ def draw_lanes_on_image(image: np.ndarray,
 
             # Need to flip the row coordinate and the column coordinate
             # because of cv2 convention
-            cv2.line(image, start_pixels, end_pixels, color,
-                     thickness=5)
+            cv2.line(image, start_pixels, end_pixels, color, thickness=5)
 
     return image
 
 
-def draw_lanes_in_agent_frame(image_side_length: int,
-                              agent_x: float, agent_y: float,
-                              agent_yaw: float,
-                              radius: float,
-                              image_resolution: float,
-                              discretization_resolution_meters: float,
-                              map_api: NuScenesMap,
-                              color_function: Callable[[float, float], Color] = color_by_yaw) -> np.ndarray:
+def draw_lanes_in_agent_frame(
+    image_side_length: int,
+    agent_x: float,
+    agent_y: float,
+    agent_yaw: float,
+    radius: float,
+    image_resolution: float,
+    discretization_resolution_meters: float,
+    map_api: NuScenesMap,
+    color_function: Callable[[float, float], Color] = color_by_yaw,
+) -> np.ndarray:
     """
     Queries the map api for the nearest lanes, discretizes them, draws them on an image
     and rotates the image so the agent heading is aligned with the postive y axis.
@@ -202,14 +217,25 @@ def draw_lanes_in_agent_frame(image_side_length: int,
     agent_pixels = int(image_side_length / 2), int(image_side_length / 2)
     base_image = np.zeros((image_side_length, image_side_length, 3))
 
-    lanes = get_lanes_in_radius(agent_x, agent_y, radius, discretization_resolution_meters, map_api)
+    lanes = get_lanes_in_radius(
+        agent_x, agent_y, radius, discretization_resolution_meters, map_api
+    )
 
-    image_with_lanes = draw_lanes_on_image(base_image, lanes, (agent_x, agent_y), agent_yaw,
-                                           agent_pixels, image_resolution, color_function)
+    image_with_lanes = draw_lanes_on_image(
+        base_image,
+        lanes,
+        (agent_x, agent_y),
+        agent_yaw,
+        agent_pixels,
+        image_resolution,
+        color_function,
+    )
 
     rotation_mat = get_rotation_matrix(image_with_lanes.shape, agent_yaw)
 
-    rotated_image = cv2.warpAffine(image_with_lanes, rotation_mat, image_with_lanes.shape[:2])
+    rotated_image = cv2.warpAffine(
+        image_with_lanes, rotation_mat, image_with_lanes.shape[:2]
+    )
 
     return rotated_image.astype("uint8")
 
@@ -221,18 +247,23 @@ class StaticLayerRasterizer(StaticLayerRepresentation):
     three channel image.
     """
 
-    def __init__(self, helper: PredictHelper,
-                 layer_names: List[str] = None,
-                 colors: List[Color] = None,
-                 resolution: float = 0.1, # meters / pixel
-                 meters_ahead: float = 40, meters_behind: float = 10,
-                 meters_left: float = 25, meters_right: float = 25):
+    def __init__(
+        self,
+        helper: PredictHelper,
+        layer_names: List[str] = None,
+        colors: List[Color] = None,
+        resolution: float = 0.1,  # meters / pixel
+        meters_ahead: float = 40,
+        meters_behind: float = 10,
+        meters_left: float = 25,
+        meters_right: float = 25,
+    ):
 
         self.helper = helper
         self.maps = load_all_maps(helper)
 
         if not layer_names:
-            layer_names = ['drivable_area', 'ped_crossing', 'walkway']
+            layer_names = ["drivable_area", "ped_crossing", "walkway"]
         self.layer_names = layer_names
 
         if not colors:
@@ -254,17 +285,20 @@ class StaticLayerRasterizer(StaticLayerRepresentation):
         :return: Three channel image.
         """
 
-        sample_annotation = self.helper.get_sample_annotation(instance_token, sample_token)
+        sample_annotation = self.helper.get_sample_annotation(
+            instance_token, sample_token
+        )
         map_name = self.helper.get_map_name_from_sample_token(sample_token)
 
-        x, y = sample_annotation['translation'][:2]
+        x, y = sample_annotation["translation"][:2]
 
-        yaw = quaternion_yaw(Quaternion(sample_annotation['rotation']))
+        yaw = quaternion_yaw(Quaternion(sample_annotation["rotation"]))
 
         yaw_corrected = correct_yaw(yaw)
 
-        image_side_length = 2 * max(self.meters_ahead, self.meters_behind,
-                                    self.meters_left, self.meters_right)
+        image_side_length = 2 * max(
+            self.meters_ahead, self.meters_behind, self.meters_left, self.meters_right
+        )
         image_side_length_pixels = int(image_side_length / self.resolution)
 
         patchbox = get_patchbox(x, y, image_side_length)
@@ -273,22 +307,40 @@ class StaticLayerRasterizer(StaticLayerRepresentation):
 
         canvas_size = (image_side_length_pixels, image_side_length_pixels)
 
-        masks = self.maps[map_name].get_map_mask(patchbox, angle_in_degrees, self.layer_names, canvas_size=canvas_size)
+        masks = self.maps[map_name].get_map_mask(
+            patchbox, angle_in_degrees, self.layer_names, canvas_size=canvas_size
+        )
 
         images = []
         for mask, color in zip(masks, self.colors):
-            images.append(change_color_of_binary_mask(np.repeat(mask[::-1, :, np.newaxis], 3, 2), color))
+            images.append(
+                change_color_of_binary_mask(
+                    np.repeat(mask[::-1, :, np.newaxis], 3, 2), color
+                )
+            )
 
-        lanes = draw_lanes_in_agent_frame(image_side_length_pixels, x, y, yaw, radius=50,
-                                          image_resolution=self.resolution, discretization_resolution_meters=1,
-                                          map_api=self.maps[map_name])
+        lanes = draw_lanes_in_agent_frame(
+            image_side_length_pixels,
+            x,
+            y,
+            yaw,
+            radius=50,
+            image_resolution=self.resolution,
+            discretization_resolution_meters=1,
+            map_api=self.maps[map_name],
+        )
 
         images.append(lanes)
 
         image = self.combinator.combine(images)
 
-        row_crop, col_crop = get_crops(self.meters_ahead, self.meters_behind, self.meters_left,
-                                       self.meters_right, self.resolution,
-                                       int(image_side_length / self.resolution))
+        row_crop, col_crop = get_crops(
+            self.meters_ahead,
+            self.meters_behind,
+            self.meters_left,
+            self.meters_right,
+            self.resolution,
+            int(image_side_length / self.resolution),
+        )
 
         return image[row_crop, col_crop, :]

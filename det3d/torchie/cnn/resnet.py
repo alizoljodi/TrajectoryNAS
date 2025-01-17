@@ -252,7 +252,7 @@ class ResNet(nn.Module):
         for i, num_blocks in enumerate(stage_blocks):
             stride = strides[i]
             dilation = dilations[i]
-            planes = 64 * 2 ** i
+            planes = 64 * 2**i
             res_layer = make_res_layer(
                 block,
                 self.inplanes,

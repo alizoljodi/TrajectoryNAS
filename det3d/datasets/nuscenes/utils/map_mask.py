@@ -20,7 +20,7 @@ class MapMask:
         :param img_file: File path to map png file.
         :param resolution: Map resolution in meters.
         """
-        assert osp.exists(img_file), 'map mask {} does not exist'.format(img_file)
+        assert osp.exists(img_file), "map mask {} does not exist".format(img_file)
         assert resolution >= 0.1, "Only supports down to 0.1 meter resolution."
         self.img_file = img_file
         self.resolution = resolution
@@ -37,7 +37,9 @@ class MapMask:
         if dilation == 0:
             return self._base_mask
         else:
-            distance_mask = cv2.distanceTransform((self.foreground - self._base_mask).astype(np.uint8), cv2.DIST_L2, 5)
+            distance_mask = cv2.distanceTransform(
+                (self.foreground - self._base_mask).astype(np.uint8), cv2.DIST_L2, 5
+            )
             distance_mask = (distance_mask * self.resolution).astype(np.float32)
             return (distance_mask <= dilation).astype(np.uint8) * self.foreground
 
@@ -47,9 +49,14 @@ class MapMask:
         Generate transform matrix for this map mask.
         :return: <np.array: 4, 4>. The transformation matrix.
         """
-        return np.array([[1.0 / self.resolution, 0, 0, 0],
-                         [0, -1.0 / self.resolution, 0, self._base_mask.shape[0]],
-                         [0, 0, 1, 0], [0, 0, 0, 1]])
+        return np.array(
+            [
+                [1.0 / self.resolution, 0, 0, 0],
+                [0, -1.0 / self.resolution, 0, self._base_mask.shape[0]],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+            ]
+        )
 
     def is_on_mask(self, x: Any, y: Any, dilation: float = 0) -> np.array:
         """

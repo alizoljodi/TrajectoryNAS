@@ -1,17 +1,14 @@
 import pickle
 from pathlib import Path
-import os 
+import os
 import numpy as np
 
 from det3d.core import box_np_ops
 from det3d.datasets.dataset_factory import get_dataset
 from tqdm import tqdm
-import pdb 
+import pdb
 
-dataset_name_map = {
-    "NUSC": "NuScenesDataset",
-    "WAYMO": "WaymoDataset"
-}
+dataset_name_map = {"NUSC": "NuScenesDataset", "WAYMO": "WaymoDataset"}
 
 
 def create_groundtruth_database(
@@ -39,7 +36,7 @@ def create_groundtruth_database(
             pipeline=pipeline,
             test_mode=True,
             nsweeps=kwargs["nsweeps"],
-            timesteps=kwargs["timesteps"]
+            timesteps=kwargs["timesteps"],
         )
         nsweeps = dataset.nsweeps
     else:
@@ -50,7 +47,7 @@ def create_groundtruth_database(
 
     root_path = Path(data_path)
 
-    if dataset_class_name in ["WAYMO", "NUSC"]: 
+    if dataset_class_name in ["WAYMO", "NUSC"]:
         if db_path is None:
             db_path = root_path / f"gt_database_{nsweeps}sweeps_withvelo"
         if dbinfo_path is None:
@@ -61,7 +58,7 @@ def create_groundtruth_database(
     if dataset_class_name == "NUSC":
         point_features = 5
     elif dataset_class_name == "WAYMO":
-        point_features = 5 if nsweeps == 1 else 6 
+        point_features = 5 if nsweeps == 1 else 6
     else:
         raise NotImplementedError()
 
@@ -78,7 +75,7 @@ def create_groundtruth_database(
         if "image_idx" in sensor_data["metadata"]:
             image_idx = sensor_data["metadata"]["image_idx"]
 
-        if nsweeps > 1: 
+        if nsweeps > 1:
             points = sensor_data["lidar"]["combined"]
         else:
             points = sensor_data["lidar"]["points"]
@@ -88,37 +85,41 @@ def create_groundtruth_database(
         names = annos["names"]
         trajectories = annos["trajectory"]
 
-        if dataset_class_name == 'WAYMO':
+        if dataset_class_name == "WAYMO":
             # waymo dataset contains millions of objects and it is not possible to store
             # all of them into a single folder
             # we randomly sample a few objects for gt augmentation
-            # We keep all cyclist as they are rare 
+            # We keep all cyclist as they are rare
             if index % 4 != 0:
-                mask = (names == 'VEHICLE') 
+                mask = names == "VEHICLE"
                 mask = np.logical_not(mask)
                 names = names[mask]
                 gt_boxes = gt_boxes[mask]
 
             if index % 2 != 0:
-                mask = (names == 'PEDESTRIAN')
+                mask = names == "PEDESTRIAN"
                 mask = np.logical_not(mask)
                 names = names[mask]
                 gt_boxes = gt_boxes[mask]
-
 
         group_dict = {}
         group_ids = np.full([gt_boxes[0].shape[0]], -1, dtype=np.int64)
         if "group_ids" in annos:
             group_ids = annos["group_ids"]
         else:
-            group_ids = [np.arange(gt_boxes[0].shape[0], dtype=np.int64) for i in range(len(gt_boxes))]
-        difficulty = [np.zeros(gt_boxes[0].shape[0], dtype=np.int32) for i in range(len(gt_boxes))]
+            group_ids = [
+                np.arange(gt_boxes[0].shape[0], dtype=np.int64)
+                for i in range(len(gt_boxes))
+            ]
+        difficulty = [
+            np.zeros(gt_boxes[0].shape[0], dtype=np.int32) for i in range(len(gt_boxes))
+        ]
         if "difficulty" in annos:
             difficulty = annos["difficulty"]
 
         num_obj = gt_boxes[0].shape[0]
         if num_obj == 0:
-            continue 
+            continue
         point_indices = box_np_ops.points_in_rbbox(points, gt_boxes[0])
         for i in range(num_obj):
             if (used_classes is None) or names[0][i] in used_classes:
@@ -136,13 +137,13 @@ def create_groundtruth_database(
                     except:
                         print("process {} files".format(index))
                         break
-       
+
             if (used_classes is None) or names[0][i] in used_classes:
                 if relative_path:
                     db_dump_path = os.path.join(db_path.stem, names[0][i], filename)
                 else:
                     db_dump_path = str(filepath)
-                
+
                 db_info = {
                     "name": [names[t][i] for t in range(len(gt_boxes))],
                     "trajectory": [trajectories[t][i] for t in range(len(gt_boxes))],

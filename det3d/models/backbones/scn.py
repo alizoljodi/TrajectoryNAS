@@ -1,9 +1,11 @@
 import sys
 
 import numpy as np
+
 # import spconv
 import spconv.pytorch as spconv
 from spconv.pytorch import SparseConv3d, SubMConv3d
+
 # from spconv import SparseConv3d, SubMConv3d
 from torch import nn
 from torch.nn import functional as F
@@ -88,13 +90,18 @@ class SparseBasicBlock(spconv.SparseModule):
 @BACKBONES.register_module
 class SpMiddleResNetFHD(nn.Module):
     def __init__(
-        self, num_input_features=128,structure=None, norm_cfg=None, name="SpMiddleResNetFHD", **kwargs
+        self,
+        num_input_features=128,
+        structure=None,
+        norm_cfg=None,
+        name="SpMiddleResNetFHD",
+        **kwargs
     ):
         super(SpMiddleResNetFHD, self).__init__()
 
-        #print('scn')
-        #print(structure)
-        #sys.exit()
+        # print('scn')
+        # print(structure)
+        # sys.exit()
         self.name = name
 
         self.dcn = None
@@ -107,10 +114,10 @@ class SpMiddleResNetFHD(nn.Module):
         self.conv_input = spconv.SparseSequential(
             SubMConv3d(num_input_features, 16, 3, bias=False, indice_key="res0"),
             build_norm_layer(norm_cfg, 16)[1],
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
         )
 
-        self.conv1 = spconv.SparseSequential(        
+        self.conv1 = spconv.SparseSequential(
             SparseBasicBlock(16, 16, norm_cfg=norm_cfg, indice_key="res0"),
             SparseBasicBlock(16, 16, norm_cfg=norm_cfg, indice_key="res0"),
         )
@@ -145,7 +152,6 @@ class SpMiddleResNetFHD(nn.Module):
             SparseBasicBlock(128, 128, norm_cfg=norm_cfg, indice_key="res3"),
         )
 
-
         self.extra_conv = spconv.SparseSequential(
             SparseConv3d(
                 128, 128, (3, 1, 1), (2, 1, 1), bias=False
@@ -155,8 +161,8 @@ class SpMiddleResNetFHD(nn.Module):
         )
 
     def forward(self, voxel_features, coors, batch_size, input_shape):
-        #print('added')
-        #sys.exit()
+        # print('added')
+        # sys.exit()
 
         # input: # [41, 1600, 1408]
         sparse_shape = np.array(input_shape[::-1]) + [1, 0, 0]
@@ -179,10 +185,10 @@ class SpMiddleResNetFHD(nn.Module):
         ret = ret.view(N, C * D, H, W)
 
         multi_scale_voxel_features = {
-            'conv1': x_conv1,
-            'conv2': x_conv2,
-            'conv3': x_conv3,
-            'conv4': x_conv4,
+            "conv1": x_conv1,
+            "conv2": x_conv2,
+            "conv3": x_conv3,
+            "conv4": x_conv4,
         }
 
         return ret, multi_scale_voxel_features

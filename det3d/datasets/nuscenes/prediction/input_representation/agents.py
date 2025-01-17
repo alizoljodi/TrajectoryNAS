@@ -10,16 +10,22 @@ from pyquaternion import Quaternion
 from nuscenes.prediction import PredictHelper
 from nuscenes.prediction.helper import quaternion_yaw
 from nuscenes.prediction.input_representation.interface import AgentRepresentation
-from nuscenes.prediction.input_representation.utils import convert_to_pixel_coords, get_crops, get_rotation_matrix
+from nuscenes.prediction.input_representation.utils import (
+    convert_to_pixel_coords,
+    get_crops,
+    get_rotation_matrix,
+)
 
 History = Dict[str, List[Dict[str, Any]]]
 
 
-def pixels_to_box_corners(row_pixel: int,
-                          column_pixel: int,
-                          length_in_pixels: float,
-                          width_in_pixels: float,
-                          yaw_in_radians: float) -> np.ndarray:
+def pixels_to_box_corners(
+    row_pixel: int,
+    column_pixel: int,
+    length_in_pixels: float,
+    width_in_pixels: float,
+    yaw_in_radians: float,
+) -> np.ndarray:
     """
     Computes four corners of 2d bounding box for agent.
     The coordinates of the box are in pixels.
@@ -35,17 +41,23 @@ def pixels_to_box_corners(row_pixel: int,
     # the convention of x and y on a coordinate plane
     # Also, a positive angle is a clockwise rotation as opposed to counterclockwise
     # so that is why we negate the rotation angle
-    coord_tuple = ((column_pixel, row_pixel), (length_in_pixels, width_in_pixels), -yaw_in_radians * 180 / np.pi)
+    coord_tuple = (
+        (column_pixel, row_pixel),
+        (length_in_pixels, width_in_pixels),
+        -yaw_in_radians * 180 / np.pi,
+    )
 
     box = cv2.boxPoints(coord_tuple)
 
     return box
 
 
-def get_track_box(annotation: Dict[str, Any],
-                  center_coordinates: Tuple[float, float],
-                  center_pixels: Tuple[float, float],
-                  resolution: float = 0.1) -> np.ndarray:
+def get_track_box(
+    annotation: Dict[str, Any],
+    center_coordinates: Tuple[float, float],
+    center_pixels: Tuple[float, float],
+    resolution: float = 0.1,
+) -> np.ndarray:
     """
     Get four corners of bounding box for agent in pixels.
     :param annotation: The annotation record of the agent.
@@ -58,15 +70,15 @@ def get_track_box(annotation: Dict[str, Any],
 
     assert resolution > 0
 
-    location = annotation['translation'][:2]
-    yaw_in_radians = quaternion_yaw(Quaternion(annotation['rotation']))
+    location = annotation["translation"][:2]
+    yaw_in_radians = quaternion_yaw(Quaternion(annotation["rotation"]))
 
-    row_pixel, column_pixel = convert_to_pixel_coords(location,
-                                                      center_coordinates,
-                                                      center_pixels, resolution)
+    row_pixel, column_pixel = convert_to_pixel_coords(
+        location, center_coordinates, center_pixels, resolution
+    )
 
-    width = annotation['size'][0] / resolution
-    length = annotation['size'][1] / resolution
+    width = annotation["size"][0] / resolution
+    length = annotation["size"][1] / resolution
 
     # Width and length are switched here so that we can draw them along the x-axis as
     # opposed to the y. This makes rotation easier.
@@ -83,8 +95,9 @@ def reverse_history(history: History) -> History:
     return {token: anns[::-1] for token, anns in history.items()}
 
 
-def add_present_time_to_history(current_time: List[Dict[str, Any]],
-                                history: History) -> History:
+def add_present_time_to_history(
+    current_time: List[Dict[str, Any]], history: History
+) -> History:
     """
     Adds the sample annotation records from the current time to the
     history object.
@@ -96,7 +109,7 @@ def add_present_time_to_history(current_time: List[Dict[str, Any]],
     """
 
     for annotation in current_time:
-        token = annotation['instance_token']
+        token = annotation["instance_token"]
 
         if token in history:
 
@@ -109,9 +122,9 @@ def add_present_time_to_history(current_time: List[Dict[str, Any]],
     return history
 
 
-def fade_color(color: Tuple[int, int, int],
-               step: int,
-               total_number_of_steps: int) -> Tuple[int, int, int]:
+def fade_color(
+    color: Tuple[int, int, int], step: int, total_number_of_steps: int
+) -> Tuple[int, int, int]:
     """
     Fades a color so that past observations are darker in the image.
     :param color: Tuple of ints describing an RGB color.
@@ -128,13 +141,13 @@ def fade_color(color: Tuple[int, int, int],
 
     hsv_color = colorsys.rgb_to_hsv(*color)
 
-    increment = (float(hsv_color[2])/255. - LOWEST_VALUE) / total_number_of_steps
+    increment = (float(hsv_color[2]) / 255.0 - LOWEST_VALUE) / total_number_of_steps
 
     new_value = LOWEST_VALUE + step * increment
 
-    new_rgb = colorsys.hsv_to_rgb(float(hsv_color[0]),
-                                  float(hsv_color[1]),
-                                  new_value * 255.)
+    new_rgb = colorsys.hsv_to_rgb(
+        float(hsv_color[0]), float(hsv_color[1]), new_value * 255.0
+    )
     return new_rgb
 
 
@@ -145,22 +158,24 @@ def default_colors(category_name: str) -> Tuple[int, int, int]:
     :return: Tuple representing rgb color.
     """
 
-    if 'vehicle' in category_name:
+    if "vehicle" in category_name:
         return 255, 255, 0  # yellow
-    elif 'object' in category_name:
+    elif "object" in category_name:
         return 204, 0, 204  # violet
-    elif 'human' in category_name or 'animal' in category_name:
+    elif "human" in category_name or "animal" in category_name:
         return 255, 153, 51  # orange
     else:
         raise ValueError(f"Cannot map {category_name} to a color.")
 
 
-def draw_agent_boxes(center_agent_annotation: Dict[str, Any],
-                     center_agent_pixels: Tuple[float, float],
-                     agent_history: History,
-                     base_image: np.ndarray,
-                     get_color: Callable[[str], Tuple[int, int, int]],
-                     resolution: float = 0.1) -> None:
+def draw_agent_boxes(
+    center_agent_annotation: Dict[str, Any],
+    center_agent_pixels: Tuple[float, float],
+    agent_history: History,
+    base_image: np.ndarray,
+    get_color: Callable[[str], Tuple[int, int, int]],
+    resolution: float = 0.1,
+) -> None:
     """
     Draws past sequence of agent boxes on the image.
     :param center_agent_annotation: Annotation record for the agent
@@ -174,7 +189,7 @@ def draw_agent_boxes(center_agent_annotation: Dict[str, Any],
     :return: None.
     """
 
-    agent_x, agent_y = center_agent_annotation['translation'][:2]
+    agent_x, agent_y = center_agent_annotation["translation"][:2]
 
     for instance_token, annotations in agent_history.items():
 
@@ -182,12 +197,14 @@ def draw_agent_boxes(center_agent_annotation: Dict[str, Any],
 
         for i, annotation in enumerate(annotations):
 
-            box = get_track_box(annotation, (agent_x, agent_y), center_agent_pixels, resolution)
+            box = get_track_box(
+                annotation, (agent_x, agent_y), center_agent_pixels, resolution
+            )
 
-            if instance_token == center_agent_annotation['instance_token']:
+            if instance_token == center_agent_annotation["instance_token"]:
                 color = (255, 0, 0)
             else:
-                color = get_color(annotation['category_name'])
+                color = get_color(annotation["category_name"])
 
             # Don't fade the colors if there is no history
             if num_points > 1:
@@ -202,13 +219,18 @@ class AgentBoxesWithFadedHistory(AgentRepresentation):
     image with faded 2d boxes.
     """
 
-    def __init__(self, helper: PredictHelper,
-                 seconds_of_history: float = 2,
-                 frequency_in_hz: float = 2,
-                 resolution: float = 0.1,  # meters / pixel
-                 meters_ahead: float = 40, meters_behind: float = 10,
-                 meters_left: float = 25, meters_right: float = 25,
-                 color_mapping: Callable[[str], Tuple[int, int, int]] = None):
+    def __init__(
+        self,
+        helper: PredictHelper,
+        seconds_of_history: float = 2,
+        frequency_in_hz: float = 2,
+        resolution: float = 0.1,  # meters / pixel
+        meters_ahead: float = 40,
+        meters_behind: float = 10,
+        meters_left: float = 25,
+        meters_right: float = 25,
+        color_mapping: Callable[[str], Tuple[int, int, int]] = None,
+    ):
 
         self.helper = helper
         self.seconds_of_history = seconds_of_history
@@ -238,39 +260,63 @@ class AgentBoxesWithFadedHistory(AgentRepresentation):
         """
 
         # Taking radius around track before to ensure all actors are in image
-        buffer = max([self.meters_ahead, self.meters_behind,
-                      self.meters_left, self.meters_right]) * 2
+        buffer = (
+            max(
+                [
+                    self.meters_ahead,
+                    self.meters_behind,
+                    self.meters_left,
+                    self.meters_right,
+                ]
+            )
+            * 2
+        )
 
-        image_side_length = int(buffer/self.resolution)
+        image_side_length = int(buffer / self.resolution)
 
         # We will center the track in the image
         central_track_pixels = (image_side_length / 2, image_side_length / 2)
 
         base_image = np.zeros((image_side_length, image_side_length, 3))
 
-        history = self.helper.get_past_for_sample(sample_token,
-                                                  self.seconds_of_history,
-                                                  in_agent_frame=False,
-                                                  just_xy=False)
+        history = self.helper.get_past_for_sample(
+            sample_token, self.seconds_of_history, in_agent_frame=False, just_xy=False
+        )
         history = reverse_history(history)
 
         present_time = self.helper.get_annotations_for_sample(sample_token)
 
         history = add_present_time_to_history(present_time, history)
 
-        center_agent_annotation = self.helper.get_sample_annotation(instance_token, sample_token)
+        center_agent_annotation = self.helper.get_sample_annotation(
+            instance_token, sample_token
+        )
 
-        draw_agent_boxes(center_agent_annotation, central_track_pixels,
-                         history, base_image, resolution=self.resolution, get_color=self.color_mapping)
+        draw_agent_boxes(
+            center_agent_annotation,
+            central_track_pixels,
+            history,
+            base_image,
+            resolution=self.resolution,
+            get_color=self.color_mapping,
+        )
 
-        center_agent_yaw = quaternion_yaw(Quaternion(center_agent_annotation['rotation']))
+        center_agent_yaw = quaternion_yaw(
+            Quaternion(center_agent_annotation["rotation"])
+        )
         rotation_mat = get_rotation_matrix(base_image.shape, center_agent_yaw)
 
-        rotated_image = cv2.warpAffine(base_image, rotation_mat, (base_image.shape[1],
-                                                                  base_image.shape[0]))
+        rotated_image = cv2.warpAffine(
+            base_image, rotation_mat, (base_image.shape[1], base_image.shape[0])
+        )
 
-        row_crop, col_crop = get_crops(self.meters_ahead, self.meters_behind,
-                                       self.meters_left, self.meters_right, self.resolution,
-                                       image_side_length)
+        row_crop, col_crop = get_crops(
+            self.meters_ahead,
+            self.meters_behind,
+            self.meters_left,
+            self.meters_right,
+            self.resolution,
+            image_side_length,
+        )
 
-        return rotated_image[row_crop, col_crop].astype('uint8')
+        return rotated_image[row_crop, col_crop].astype("uint8")

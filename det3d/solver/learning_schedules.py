@@ -1,6 +1,7 @@
 """PyTorch edition of TensorFlow learning schedule in tensorflow object
 detection API.
 """
+
 import numpy as np
 from torch.optim.optimizer import Optimizer
 
@@ -91,8 +92,7 @@ class ManualStepping(_LRSchedulerStep):
 
 
 class ExponentialDecayWithBurnin(_LRSchedulerStep):
-    """Pytorch edition of manual_stepping in tensorflow.
-    """
+    """Pytorch edition of manual_stepping in tensorflow."""
 
     def __init__(
         self,

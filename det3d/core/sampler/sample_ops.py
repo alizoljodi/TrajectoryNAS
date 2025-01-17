@@ -10,6 +10,7 @@ from det3d.core.sampler import preprocess as prep
 from det3d.utils.check import shape_mergeable
 import pdb
 
+
 class DataBaseSamplerV2:
     def __init__(
         self,
@@ -109,7 +110,7 @@ class DataBaseSamplerV2:
         gt_group_ids=None,
         calib=None,
         road_planes=None,
-        sampler_type="standard"
+        sampler_type="standard",
     ):
         name_trajectory = []
         for name, traj in zip(gt_names, gt_trajectory):
@@ -129,7 +130,7 @@ class DataBaseSamplerV2:
             else:
                 sampled_num = int(
                     max_sample_num - np.sum([n == class_name for n in name_trajectory])
-                )              
+                )
 
             sampled_num = np.round(self._rate * sampled_num).astype(np.int64)
             sampled_num_dict[class_name] = sampled_num
@@ -205,14 +206,14 @@ class DataBaseSamplerV2:
                         s_points[:, :3] = box_np_ops.rotation_points_single_angle(
                             s_points[:, :4], rot, axis=2
                         )
-                    
+
                     s_points[:, :3] += info["box3d_lidar"][:3]
                     s_points_list.append(s_points)
                     # print(pathlib.Path(info["path"]).stem)
                 except Exception:
                     print(str(pathlib.Path(root_path) / info["path"]))
                     continue
-            
+
             if random_crop:
                 s_points_list_new = []
                 assert calib is not None
@@ -236,7 +237,7 @@ class DataBaseSamplerV2:
                 "gt_trajectory": np.array([s["trajectory"][0] for s in sampled]),
                 "difficulty": np.array([s["difficulty"] for s in sampled]),
                 "gt_boxes": sampled_gt_boxes,
-                "gt_forecast" : forecasted,
+                "gt_forecast": forecasted,
                 "points": np.concatenate(s_points_list, axis=0),
                 "gt_masks": np.ones((num_sampled,), dtype=np.bool_),
             }
@@ -287,18 +288,23 @@ class DataBaseSamplerV2:
             while len(sampled) < num:
                 sample = self._sampler_dict[name].sample(1)[0]
                 if sample["trajectory"][0] != trajectory:
-                    continue 
+                    continue
 
                 sampled.append(sample)
 
         forecast = []
         for sample in sampled:
             try:
-                forecast.append([sample["box3d_lidar"][i][-6:] for i in range(len(sample["box3d_lidar"]))])
+                forecast.append(
+                    [
+                        sample["box3d_lidar"][i][-6:]
+                        for i in range(len(sample["box3d_lidar"]))
+                    ]
+                )
                 sample["name"] = sample["name"][0]
                 sample["box3d_lidar"] = sample["box3d_lidar"][0]
                 sample["difficulty"] = sample["difficulty"][0]
-            except: 
+            except:
                 forecast.append([sample["box3d_lidar"][-6:]])
 
         sampled = copy.deepcopy(sampled)

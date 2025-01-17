@@ -30,13 +30,19 @@ def make_2d_rotation_matrix(angle_in_radians: float) -> np.ndarray:
     by angle_in_radians.
     """
 
-    return np.array([[np.cos(angle_in_radians), -np.sin(angle_in_radians)],
-                     [np.sin(angle_in_radians), np.cos(angle_in_radians)]])
+    return np.array(
+        [
+            [np.cos(angle_in_radians), -np.sin(angle_in_radians)],
+            [np.sin(angle_in_radians), np.cos(angle_in_radians)],
+        ]
+    )
 
 
-def convert_global_coords_to_local(coordinates: np.ndarray,
-                                   translation: Tuple[float, float, float],
-                                   rotation: Tuple[float, float, float, float]) -> np.ndarray:
+def convert_global_coords_to_local(
+    coordinates: np.ndarray,
+    translation: Tuple[float, float, float],
+    rotation: Tuple[float, float, float, float],
+) -> np.ndarray:
     """
     Converts global coordinates to coordinates in the frame given by the rotation quaternion and
     centered at the translation vector. The rotation is meant to be a z-axis rotation.
@@ -55,9 +61,11 @@ def convert_global_coords_to_local(coordinates: np.ndarray,
     return np.dot(transform, coords).T[:, :2]
 
 
-def convert_local_coords_to_global(coordinates: np.ndarray,
-                                   translation: Tuple[float, float, float],
-                                   rotation: Tuple[float, float, float, float]) -> np.ndarray:
+def convert_local_coords_to_global(
+    coordinates: np.ndarray,
+    translation: Tuple[float, float, float],
+    rotation: Tuple[float, float, float, float],
+) -> np.ndarray:
     """
     Converts local coordinates to global coordinates.
     :param coordinates: x,y locations. array of shape [n_steps, 2]
@@ -70,11 +78,13 @@ def convert_local_coords_to_global(coordinates: np.ndarray,
 
     transform = make_2d_rotation_matrix(angle_in_radians=-yaw)
 
-    return np.dot(transform, coordinates.T).T[:, :2] + np.atleast_2d(np.array(translation)[:2])
+    return np.dot(transform, coordinates.T).T[:, :2] + np.atleast_2d(
+        np.array(translation)[:2]
+    )
 
 
 class PredictHelper:
-    """ Wrapper class around NuScenes to help retrieve data for the prediction task. """
+    """Wrapper class around NuScenes to help retrieve data for the prediction task."""
 
     def __init__(self, nusc: NuScenes):
         """
@@ -92,7 +102,9 @@ class PredictHelper:
         mapping = {}
 
         for record in self.data.sample_annotation:
-            mapping[(record['sample_token'], record['instance_token'])] = record['token']
+            mapping[(record["sample_token"], record["instance_token"])] = record[
+                "token"
+            ]
 
         return mapping
 
@@ -102,7 +114,7 @@ class PredictHelper:
         :param sample_token: Get the timestamp for this sample.
         :return: Timestamp (microseconds).
         """
-        return self.data.get('sample', sample_token)['timestamp']
+        return self.data.get("sample", sample_token)["timestamp"]
 
     def _absolute_time_diff(self, time1: float, time2: float) -> float:
         """
@@ -113,7 +125,9 @@ class PredictHelper:
         """
         return abs(time1 - time2) / MICROSECONDS_PER_SECOND
 
-    def _iterate(self, starting_annotation: Dict[str, Any], seconds: float, direction: str) -> List[Dict[str, Any]]:
+    def _iterate(
+        self, starting_annotation: Dict[str, Any], seconds: float, direction: str
+    ) -> List[Dict[str, Any]]:
         """
         Iterates forwards or backwards in time through the annotations for a given amount of seconds.
         :param starting_annotation: Sample annotation record to start from.
@@ -122,7 +136,9 @@ class PredictHelper:
         :return: List of annotations ordered by time.
         """
         if seconds < 0:
-            raise ValueError(f"Parameter seconds must be non-negative. Received {seconds}.")
+            raise ValueError(
+                f"Parameter seconds must be non-negative. Received {seconds}."
+            )
 
         # Need to exit early because we technically _could_ return data in this case if
         # the first observation is within the BUFFER.
@@ -130,21 +146,23 @@ class PredictHelper:
             return []
 
         seconds_with_buffer = seconds + BUFFER
-        starting_time = self._timestamp_for_sample(starting_annotation['sample_token'])
+        starting_time = self._timestamp_for_sample(starting_annotation["sample_token"])
 
         next_annotation = starting_annotation
 
-        time_elapsed = 0.
+        time_elapsed = 0.0
 
         annotations = []
 
         while time_elapsed <= seconds_with_buffer:
 
-            if next_annotation[direction] == '':
+            if next_annotation[direction] == "":
                 break
 
-            next_annotation = self.data.get('sample_annotation', next_annotation[direction])
-            current_time = self._timestamp_for_sample(next_annotation['sample_token'])
+            next_annotation = self.data.get(
+                "sample_annotation", next_annotation[direction]
+            )
+            current_time = self._timestamp_for_sample(next_annotation["sample_token"])
 
             time_elapsed = self._absolute_time_diff(current_time, starting_time)
 
@@ -160,7 +178,9 @@ class PredictHelper:
         :param sample_token: Sample token for instance.
         :return: Sample annotation record.
         """
-        return self.data.get('sample_annotation', self.inst_sample_to_ann[(sample_token, instance_token)])
+        return self.data.get(
+            "sample_annotation", self.inst_sample_to_ann[(sample_token, instance_token)]
+        )
 
     def get_annotations_for_sample(self, sample_token: str) -> List[Record]:
         """
@@ -168,19 +188,24 @@ class PredictHelper:
         :param sample_token: Sample token.
         """
 
-        sample_record = self.data.get('sample', sample_token)
+        sample_record = self.data.get("sample", sample_token)
         annotations = []
 
-        for annotation_token in sample_record['anns']:
-            annotation_record = self.data.get('sample_annotation', annotation_token)
+        for annotation_token in sample_record["anns"]:
+            annotation_record = self.data.get("sample_annotation", annotation_token)
             annotations.append(annotation_record)
 
         return annotations
 
-    def _get_past_or_future_for_agent(self, instance_token: str, sample_token: str,
-                                      seconds: float, in_agent_frame: bool,
-                                      direction: str,
-                                      just_xy: bool = True) -> Union[List[Record], np.ndarray]:
+    def _get_past_or_future_for_agent(
+        self,
+        instance_token: str,
+        sample_token: str,
+        seconds: float,
+        in_agent_frame: bool,
+        direction: str,
+        just_xy: bool = True,
+    ) -> Union[List[Record], np.ndarray]:
         """
         Helper function to reduce code duplication between get_future and get_past for agent.
         :param instance_token: Instance of token.
@@ -197,21 +222,28 @@ class PredictHelper:
         if not just_xy:
             return sequence
 
-        coords = np.array([r['translation'][:2] for r in sequence])
+        coords = np.array([r["translation"][:2] for r in sequence])
 
         if coords.size == 0:
             return coords
 
         if in_agent_frame:
-            coords = convert_global_coords_to_local(coords,
-                                                    starting_annotation['translation'],
-                                                    starting_annotation['rotation'])
+            coords = convert_global_coords_to_local(
+                coords,
+                starting_annotation["translation"],
+                starting_annotation["rotation"],
+            )
 
         return coords
 
-    def get_future_for_agent(self, instance_token: str, sample_token: str,
-                             seconds: float, in_agent_frame: bool,
-                             just_xy: bool = True) -> Union[List[Record], np.ndarray]:
+    def get_future_for_agent(
+        self,
+        instance_token: str,
+        sample_token: str,
+        seconds: float,
+        in_agent_frame: bool,
+        just_xy: bool = True,
+    ) -> Union[List[Record], np.ndarray]:
         """
         Retrieves the agent's future x,y locations.
         :param instance_token: Instance token.
@@ -223,12 +255,23 @@ class PredictHelper:
         :return: If just_xy, np.ndarray. Else, List of records.
             The rows increate with time, i.e the last row occurs the farthest in the future.
         """
-        return self._get_past_or_future_for_agent(instance_token, sample_token, seconds,
-                                                  in_agent_frame, direction='next', just_xy=just_xy)
+        return self._get_past_or_future_for_agent(
+            instance_token,
+            sample_token,
+            seconds,
+            in_agent_frame,
+            direction="next",
+            just_xy=just_xy,
+        )
 
-    def get_past_for_agent(self, instance_token: str, sample_token: str,
-                           seconds: float, in_agent_frame: bool,
-                           just_xy: bool = True) -> Union[List[Record], np.ndarray]:
+    def get_past_for_agent(
+        self,
+        instance_token: str,
+        sample_token: str,
+        seconds: float,
+        in_agent_frame: bool,
+        just_xy: bool = True,
+    ) -> Union[List[Record], np.ndarray]:
         """
         Retrieves the agent's past sample annotation records.
         :param instance_token: Instance token.
@@ -241,12 +284,24 @@ class PredictHelper:
         :return: If just_xy, np.ndarray. Else, List of records.
             The rows decrease with time, i.e the last row occurs the farthest in the past.
         """
-        return self._get_past_or_future_for_agent(instance_token, sample_token, seconds,
-                                                  in_agent_frame, direction='prev', just_xy=just_xy)
+        return self._get_past_or_future_for_agent(
+            instance_token,
+            sample_token,
+            seconds,
+            in_agent_frame,
+            direction="prev",
+            just_xy=just_xy,
+        )
 
-    def _get_past_or_future_for_sample(self, sample_token: str, seconds: float, in_agent_frame: bool,
-                                       direction: str, just_xy: bool,
-                                       function: Callable[[str, str, float, bool, str, bool], np.ndarray]) -> Union[Dict[str, np.ndarray], Dict[str, List[Record]]]:
+    def _get_past_or_future_for_sample(
+        self,
+        sample_token: str,
+        seconds: float,
+        in_agent_frame: bool,
+        direction: str,
+        just_xy: bool,
+        function: Callable[[str, str, float, bool, str, bool], np.ndarray],
+    ) -> Union[Dict[str, np.ndarray], Dict[str, List[Record]]]:
         """
         Helper function to reduce code duplication between get_future and get_past for sample.
         :param sample_token: Sample token.
@@ -258,20 +313,30 @@ class PredictHelper:
         :param function: _get_past_or_future_for_agent.
         :return: Dictionary mapping instance token to np.array or list of records.
         """
-        sample_record = self.data.get('sample', sample_token)
+        sample_record = self.data.get("sample", sample_token)
         sequences = {}
-        for annotation in sample_record['anns']:
-            annotation_record = self.data.get('sample_annotation', annotation)
-            sequence = function(annotation_record['instance_token'],
-                                annotation_record['sample_token'],
-                                seconds, in_agent_frame, direction, just_xy=just_xy)
+        for annotation in sample_record["anns"]:
+            annotation_record = self.data.get("sample_annotation", annotation)
+            sequence = function(
+                annotation_record["instance_token"],
+                annotation_record["sample_token"],
+                seconds,
+                in_agent_frame,
+                direction,
+                just_xy=just_xy,
+            )
 
-            sequences[annotation_record['instance_token']] = sequence
+            sequences[annotation_record["instance_token"]] = sequence
 
         return sequences
 
-    def get_future_for_sample(self, sample_token: str, seconds: float, in_agent_frame: bool,
-                              just_xy: bool = True) -> Union[Dict[str, np.ndarray], Dict[str, List[Record]]]:
+    def get_future_for_sample(
+        self,
+        sample_token: str,
+        seconds: float,
+        in_agent_frame: bool,
+        just_xy: bool = True,
+    ) -> Union[Dict[str, np.ndarray], Dict[str, List[Record]]]:
         """
         Retrieves the the future x,y locations of all agents in the sample.
         :param sample_token: Sample token.
@@ -284,12 +349,22 @@ class PredictHelper:
             Else, the mapping is from instance token to list of records.
             The rows increase with time, i.e the last row occurs the farthest in the future.
         """
-        return self._get_past_or_future_for_sample(sample_token, seconds, in_agent_frame, 'next',
-                                                   just_xy,
-                                                   function=self._get_past_or_future_for_agent)
+        return self._get_past_or_future_for_sample(
+            sample_token,
+            seconds,
+            in_agent_frame,
+            "next",
+            just_xy,
+            function=self._get_past_or_future_for_agent,
+        )
 
-    def get_past_for_sample(self, sample_token: str, seconds: float, in_agent_frame: bool,
-                            just_xy: bool = True) -> Dict[str, np.ndarray]:
+    def get_past_for_sample(
+        self,
+        sample_token: str,
+        seconds: float,
+        in_agent_frame: bool,
+        just_xy: bool = True,
+    ) -> Dict[str, np.ndarray]:
         """
         Retrieves the the past x,y locations of all agents in the sample.
         :param sample_token: Sample token.
@@ -302,13 +377,23 @@ class PredictHelper:
             Else, the mapping is from instance token to list of records.
             The rows decrease with time, i.e the last row occurs the farthest in the past.
         """
-        return self._get_past_or_future_for_sample(sample_token, seconds, in_agent_frame, 'prev',
-                                                   just_xy,
-                                                   function=self._get_past_or_future_for_agent)
+        return self._get_past_or_future_for_sample(
+            sample_token,
+            seconds,
+            in_agent_frame,
+            "prev",
+            just_xy,
+            function=self._get_past_or_future_for_agent,
+        )
 
-    def _compute_diff_between_sample_annotations(self, instance_token: str,
-                                                 sample_token: str, max_time_diff: float,
-                                                 with_function, **kwargs) -> float:
+    def _compute_diff_between_sample_annotations(
+        self,
+        instance_token: str,
+        sample_token: str,
+        max_time_diff: float,
+        with_function,
+        **kwargs,
+    ) -> float:
         """
         Grabs current and previous annotation and computes a float from them.
         :param instance_token: Instance token.
@@ -321,13 +406,13 @@ class PredictHelper:
         """
         annotation = self.get_sample_annotation(instance_token, sample_token)
 
-        if annotation['prev'] == '':
+        if annotation["prev"] == "":
             return np.nan
 
-        prev = self.data.get('sample_annotation', annotation['prev'])
+        prev = self.data.get("sample_annotation", annotation["prev"])
 
-        current_time = 1e-6 * self.data.get('sample', sample_token)['timestamp']
-        prev_time = 1e-6 * self.data.get('sample', prev['sample_token'])['timestamp']
+        current_time = 1e-6 * self.data.get("sample", sample_token)["timestamp"]
+        prev_time = 1e-6 * self.data.get("sample", prev["sample_token"])["timestamp"]
         time_diff = current_time - prev_time
 
         if time_diff <= max_time_diff:
@@ -337,7 +422,9 @@ class PredictHelper:
         else:
             return np.nan
 
-    def get_velocity_for_agent(self, instance_token: str, sample_token: str, max_time_diff: float = 1.5) -> float:
+    def get_velocity_for_agent(
+        self, instance_token: str, sample_token: str, max_time_diff: float = 1.5
+    ) -> float:
         """
         Computes velocity based on the difference between the current and previous annotation.
         :param instance_token: Instance token.
@@ -345,11 +432,13 @@ class PredictHelper:
         :param max_time_diff: If the time difference between now and the most recent annotation is larger
             than this param, function will return np.nan.
         """
-        return self._compute_diff_between_sample_annotations(instance_token, sample_token, max_time_diff,
-                                                             with_function=velocity)
+        return self._compute_diff_between_sample_annotations(
+            instance_token, sample_token, max_time_diff, with_function=velocity
+        )
 
-    def get_heading_change_rate_for_agent(self, instance_token: str, sample_token: str,
-                                          max_time_diff: float = 1.5) -> float:
+    def get_heading_change_rate_for_agent(
+        self, instance_token: str, sample_token: str, max_time_diff: float = 1.5
+    ) -> float:
         """
         Computes heading change rate based on the difference between the current and previous annotation.
         :param instance_token: Instance token.
@@ -357,10 +446,16 @@ class PredictHelper:
         :param max_time_diff: If the time difference between now and the most recent annotation is larger
             than this param, function will return np.nan.
         """
-        return self._compute_diff_between_sample_annotations(instance_token, sample_token, max_time_diff,
-                                                             with_function=heading_change_rate)
+        return self._compute_diff_between_sample_annotations(
+            instance_token,
+            sample_token,
+            max_time_diff,
+            with_function=heading_change_rate,
+        )
 
-    def get_acceleration_for_agent(self, instance_token: str, sample_token: str, max_time_diff: float = 1.5) -> float:
+    def get_acceleration_for_agent(
+        self, instance_token: str, sample_token: str, max_time_diff: float = 1.5
+    ) -> float:
         """
         Computes heading change rate based on the difference between the current and previous annotation.
         :param instance_token: Instance token.
@@ -368,18 +463,21 @@ class PredictHelper:
         :param max_time_diff: If the time difference between now and the most recent annotation is larger
             than this param, function will return np.nan.
         """
-        return self._compute_diff_between_sample_annotations(instance_token, sample_token,
-                                                             max_time_diff,
-                                                             with_function=acceleration,
-                                                             instance_token_for_velocity=instance_token,
-                                                             helper=self)
+        return self._compute_diff_between_sample_annotations(
+            instance_token,
+            sample_token,
+            max_time_diff,
+            with_function=acceleration,
+            instance_token_for_velocity=instance_token,
+            helper=self,
+        )
 
     def get_map_name_from_sample_token(self, sample_token: str) -> str:
 
-        sample = self.data.get('sample', sample_token)
-        scene = self.data.get('scene', sample['scene_token'])
-        log = self.data.get('log', scene['log_token'])
-        return log['location']
+        sample = self.data.get("sample", sample_token)
+        scene = self.data.get("scene", sample["scene_token"])
+        log = self.data.get("log", scene["log_token"])
+        return log["location"]
 
 
 def velocity(current: Dict[str, Any], prev: Dict[str, Any], time_diff: float) -> float:
@@ -389,25 +487,34 @@ def velocity(current: Dict[str, Any], prev: Dict[str, Any], time_diff: float) ->
     :param prev: Sample annotation record for the previous time stamp.
     :param time_diff: How much time has elapsed between the records.
     """
-    diff = (np.array(current['translation']) - np.array(prev['translation'])) / time_diff
+    diff = (
+        np.array(current["translation"]) - np.array(prev["translation"])
+    ) / time_diff
     return np.linalg.norm(diff[:2])
 
 
-def heading_change_rate(current: Dict[str, Any], prev: Dict[str, Any], time_diff: float) -> float:
+def heading_change_rate(
+    current: Dict[str, Any], prev: Dict[str, Any], time_diff: float
+) -> float:
     """
     Helper function to compute heading change rate between sample annotations.
     :param current: Sample annotation record for the current timestamp.
     :param prev: Sample annotation record for the previous time stamp.
     :param time_diff: How much time has elapsed between the records.
     """
-    current_yaw = quaternion_yaw(Quaternion(current['rotation']))
-    prev_yaw = quaternion_yaw(Quaternion(prev['rotation']))
+    current_yaw = quaternion_yaw(Quaternion(current["rotation"]))
+    prev_yaw = quaternion_yaw(Quaternion(prev["rotation"]))
 
-    return angle_diff(current_yaw, prev_yaw, period=2*np.pi) / time_diff
+    return angle_diff(current_yaw, prev_yaw, period=2 * np.pi) / time_diff
 
 
-def acceleration(current: Dict[str, Any], prev: Dict[str, Any],
-                 time_diff: float, instance_token_for_velocity: str, helper: PredictHelper) -> float:
+def acceleration(
+    current: Dict[str, Any],
+    prev: Dict[str, Any],
+    time_diff: float,
+    instance_token_for_velocity: str,
+    helper: PredictHelper,
+) -> float:
     """
     Helper function to compute acceleration between sample annotations.
     :param current: Sample annotation record for the current timestamp.
@@ -416,7 +523,11 @@ def acceleration(current: Dict[str, Any], prev: Dict[str, Any],
     :param instance_token_for_velocity: Instance token to compute velocity.
     :param helper: Instance of PredictHelper.
     """
-    current_velocity = helper.get_velocity_for_agent(instance_token_for_velocity, current['sample_token'])
-    prev_velocity = helper.get_velocity_for_agent(instance_token_for_velocity, prev['sample_token'])
+    current_velocity = helper.get_velocity_for_agent(
+        instance_token_for_velocity, current["sample_token"]
+    )
+    prev_velocity = helper.get_velocity_for_agent(
+        instance_token_for_velocity, prev["sample_token"]
+    )
 
     return (current_velocity - prev_velocity) / time_diff

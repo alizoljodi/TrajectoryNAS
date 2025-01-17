@@ -3,9 +3,11 @@ import sys
 from ..registry import DETECTORS
 from .single_stage import SingleStageDetector
 from det3d.torchie.trainer import load_checkpoint
-import torch 
-from copy import deepcopy 
+import torch
+from copy import deepcopy
 import pdb
+
+
 @DETECTORS.register_module
 class VoxelNet(SingleStageDetector):
     def __init__(
@@ -18,31 +20,31 @@ class VoxelNet(SingleStageDetector):
         test_cfg=None,
         pretrained=None,
     ):
-        #print('voxelnet')
+        # print('voxelnet')
         print(backbone)
-        #sys.exit()
+        # sys.exit()
         super(VoxelNet, self).__init__(
             reader, backbone, neck, bbox_head, train_cfg, test_cfg, pretrained
         )
-        
+
     def extract_feat(self, data):
         input_features = self.reader(data["features"], data["num_voxels"])
-        structure='gg'
+        structure = "gg"
         x, voxel_feature = self.backbone(
-            input_features,data["coors"], data["batch_size"], data["input_shape"]
+            input_features, data["coors"], data["batch_size"], data["input_shape"]
         )
         if self.with_neck:
             x = self.neck(x)
 
         return x, voxel_feature
 
-    def forward(self, example, return_loss=True,structure=None, **kwargs):
-        #print(structure)
-        #print('here')
-        #sys.exit()
-        #print(example)
-        #print(self.extract_feat)
-        #sys.exit()
+    def forward(self, example, return_loss=True, structure=None, **kwargs):
+        # print(structure)
+        # print('here')
+        # sys.exit()
+        # print(example)
+        # print(self.extract_feat)
+        # sys.exit()
         voxels = example["voxels"]
         coordinates = example["coordinates"]
         num_points_in_voxel = example["num_points"]
@@ -58,7 +60,7 @@ class VoxelNet(SingleStageDetector):
         )
 
         bev_map = torch.stack(example["bev_map"], dim=1).float()
-        
+
         x, _ = self.extract_feat(data)
         preds = self.bbox_head(x, bev_map)
 
@@ -85,13 +87,13 @@ class VoxelNet(SingleStageDetector):
         )
 
         x, voxel_feature = self.extract_feat(data)
-        bev_feature = x 
+        bev_feature = x
         preds = self.bbox_head(x)
 
         # manual deepcopy ...
         new_preds = []
         for pred in preds:
-            new_pred = {} 
+            new_pred = {}
             for k, v in pred.items():
                 new_pred[k] = v.detach()
 
@@ -100,6 +102,11 @@ class VoxelNet(SingleStageDetector):
         boxes = self.bbox_head.predict(example, new_preds, self.test_cfg)
 
         if return_loss:
-            return boxes, bev_feature, voxel_feature, self.bbox_head.loss(example, preds)
+            return (
+                boxes,
+                bev_feature,
+                voxel_feature,
+                self.bbox_head.loss(example, preds),
+            )
         else:
-            return boxes, bev_feature, voxel_feature, None 
+            return boxes, bev_feature, voxel_feature, None

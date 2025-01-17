@@ -15,9 +15,10 @@ from pyquaternion import Quaternion
 
 from nuscenes.utils.geometry_utils import view_points, transform_matrix
 import matplotlib.pyplot as plt
-import pdb 
+import pdb
 
 from itertools import tee
+
 
 def window(iterable, size):
     iters = tee(iterable, size)
@@ -41,7 +42,9 @@ class PointCloud(ABC):
         Initialize a point cloud and check it has the correct dimensions.
         :param points: <np.float: d, n>. d-dimensional input point cloud matrix.
         """
-        assert points.shape[0] == self.nbr_dims(), 'Error: Pointcloud points must have format: %d x n' % self.nbr_dims()
+        assert points.shape[0] == self.nbr_dims(), (
+            "Error: Pointcloud points must have format: %d x n" % self.nbr_dims()
+        )
         self.points = points
 
     @staticmethod
@@ -55,7 +58,7 @@ class PointCloud(ABC):
 
     @classmethod
     @abstractmethod
-    def from_file(cls, file_name: str) -> 'PointCloud':
+    def from_file(cls, file_name: str) -> "PointCloud":
         """
         Loads point cloud from disk.
         :param file_name: Path of the pointcloud file on disk.
@@ -64,13 +67,15 @@ class PointCloud(ABC):
         pass
 
     @classmethod
-    def from_file_multisweep(cls,
-                             nusc: 'NuScenes',
-                             sample_rec: Dict,
-                             chan: str,
-                             ref_chan: str,
-                             nsweeps: int = 5,
-                             min_distance: float = 1.0) -> Tuple['PointCloud', np.ndarray]:
+    def from_file_multisweep(
+        cls,
+        nusc: "NuScenes",
+        sample_rec: Dict,
+        chan: str,
+        ref_chan: str,
+        nsweeps: int = 5,
+        min_distance: float = 1.0,
+    ) -> Tuple["PointCloud", np.ndarray]:
         """
         Return a point cloud that aggregates multiple sweeps.
         As every sweep is in a different coordinate frame, we need to map the coordinates to a single reference frame.
@@ -89,43 +94,65 @@ class PointCloud(ABC):
         all_times = np.zeros((1, 0))
 
         # Get reference pose and timestamp.
-        ref_sd_token = sample_rec['data'][ref_chan]
-        ref_sd_rec = nusc.get('sample_data', ref_sd_token)
-        ref_pose_rec = nusc.get('ego_pose', ref_sd_rec['ego_pose_token'])
-        ref_cs_rec = nusc.get('calibrated_sensor', ref_sd_rec['calibrated_sensor_token'])
-        ref_time = 1e-6 * ref_sd_rec['timestamp']
+        ref_sd_token = sample_rec["data"][ref_chan]
+        ref_sd_rec = nusc.get("sample_data", ref_sd_token)
+        ref_pose_rec = nusc.get("ego_pose", ref_sd_rec["ego_pose_token"])
+        ref_cs_rec = nusc.get(
+            "calibrated_sensor", ref_sd_rec["calibrated_sensor_token"]
+        )
+        ref_time = 1e-6 * ref_sd_rec["timestamp"]
 
         # Homogeneous transform from ego car frame to reference frame.
-        ref_from_car = transform_matrix(ref_cs_rec['translation'], Quaternion(ref_cs_rec['rotation']), inverse=True)
+        ref_from_car = transform_matrix(
+            ref_cs_rec["translation"], Quaternion(ref_cs_rec["rotation"]), inverse=True
+        )
 
         # Homogeneous transformation matrix from global to _current_ ego car frame.
-        car_from_global = transform_matrix(ref_pose_rec['translation'], Quaternion(ref_pose_rec['rotation']),
-                                           inverse=True)
+        car_from_global = transform_matrix(
+            ref_pose_rec["translation"],
+            Quaternion(ref_pose_rec["rotation"]),
+            inverse=True,
+        )
 
         # Aggregate current and previous sweeps.
-        sample_data_token = sample_rec['data'][chan]
-        current_sd_rec = nusc.get('sample_data', sample_data_token)
+        sample_data_token = sample_rec["data"][chan]
+        current_sd_rec = nusc.get("sample_data", sample_data_token)
         for _ in range(nsweeps):
             # Load up the pointcloud and remove points close to the sensor.
-            current_pc = cls.from_file(osp.join(nusc.dataroot, current_sd_rec['filename']))
+            current_pc = cls.from_file(
+                osp.join(nusc.dataroot, current_sd_rec["filename"])
+            )
             current_pc.remove_close(min_distance)
 
             # Get past pose.
-            current_pose_rec = nusc.get('ego_pose', current_sd_rec['ego_pose_token'])
-            global_from_car = transform_matrix(current_pose_rec['translation'],
-                                               Quaternion(current_pose_rec['rotation']), inverse=False)
+            current_pose_rec = nusc.get("ego_pose", current_sd_rec["ego_pose_token"])
+            global_from_car = transform_matrix(
+                current_pose_rec["translation"],
+                Quaternion(current_pose_rec["rotation"]),
+                inverse=False,
+            )
 
             # Homogeneous transformation matrix from sensor coordinate frame to ego car frame.
-            current_cs_rec = nusc.get('calibrated_sensor', current_sd_rec['calibrated_sensor_token'])
-            car_from_current = transform_matrix(current_cs_rec['translation'], Quaternion(current_cs_rec['rotation']),
-                                                inverse=False)
+            current_cs_rec = nusc.get(
+                "calibrated_sensor", current_sd_rec["calibrated_sensor_token"]
+            )
+            car_from_current = transform_matrix(
+                current_cs_rec["translation"],
+                Quaternion(current_cs_rec["rotation"]),
+                inverse=False,
+            )
 
             # Fuse four transformation matrices into one and perform transform.
-            trans_matrix = reduce(np.dot, [ref_from_car, car_from_global, global_from_car, car_from_current])
+            trans_matrix = reduce(
+                np.dot,
+                [ref_from_car, car_from_global, global_from_car, car_from_current],
+            )
             current_pc.transform(trans_matrix)
 
             # Add time vector which can be used as a temporal feature.
-            time_lag = ref_time - 1e-6 * current_sd_rec['timestamp']  # Positive difference.
+            time_lag = (
+                ref_time - 1e-6 * current_sd_rec["timestamp"]
+            )  # Positive difference.
             times = time_lag * np.ones((1, current_pc.nbr_points()))
             all_times = np.hstack((all_times, times))
 
@@ -133,10 +160,10 @@ class PointCloud(ABC):
             all_pc.points = np.hstack((all_pc.points, current_pc.points))
 
             # Abort if there are no previous sweeps.
-            if current_sd_rec['prev'] == '':
+            if current_sd_rec["prev"] == "":
                 break
             else:
-                current_sd_rec = nusc.get('sample_data', current_sd_rec['prev'])
+                current_sd_rec = nusc.get("sample_data", current_sd_rec["prev"])
 
         return all_pc, all_times
 
@@ -152,7 +179,9 @@ class PointCloud(ABC):
         Sub-samples the pointcloud.
         :param ratio: Fraction to keep.
         """
-        selected_ind = np.random.choice(np.arange(0, self.nbr_points()), size=int(self.nbr_points() * ratio))
+        selected_ind = np.random.choice(
+            np.arange(0, self.nbr_points()), size=int(self.nbr_points() * ratio)
+        )
         self.points = self.points[:, selected_ind]
 
     def remove_close(self, radius: float) -> None:
@@ -186,14 +215,18 @@ class PointCloud(ABC):
         Applies a homogeneous transform.
         :param transf_matrix: <np.float: 4, 4>. Homogenous transformation matrix.
         """
-        self.points[:3, :] = transf_matrix.dot(np.vstack((self.points[:3, :], np.ones(self.nbr_points()))))[:3, :]
+        self.points[:3, :] = transf_matrix.dot(
+            np.vstack((self.points[:3, :], np.ones(self.nbr_points())))
+        )[:3, :]
 
-    def render_height(self,
-                      ax: Axes,
-                      view: np.ndarray = np.eye(4),
-                      x_lim: Tuple[float, float] = (-20, 20),
-                      y_lim: Tuple[float, float] = (-20, 20),
-                      marker_size: float = 1) -> None:
+    def render_height(
+        self,
+        ax: Axes,
+        view: np.ndarray = np.eye(4),
+        x_lim: Tuple[float, float] = (-20, 20),
+        y_lim: Tuple[float, float] = (-20, 20),
+        marker_size: float = 1,
+    ) -> None:
         """
         Very simple method that applies a transformation and then scatter plots the points colored by height (z-value).
         :param ax: Axes on which to render the points.
@@ -204,12 +237,14 @@ class PointCloud(ABC):
         """
         self._render_helper(2, ax, view, x_lim, y_lim, marker_size)
 
-    def render_intensity(self,
-                         ax: Axes,
-                         view: np.ndarray = np.eye(4),
-                         x_lim: Tuple[float, float] = (-20, 20),
-                         y_lim: Tuple[float, float] = (-20, 20),
-                         marker_size: float = 1) -> None:
+    def render_intensity(
+        self,
+        ax: Axes,
+        view: np.ndarray = np.eye(4),
+        x_lim: Tuple[float, float] = (-20, 20),
+        y_lim: Tuple[float, float] = (-20, 20),
+        marker_size: float = 1,
+    ) -> None:
         """
         Very simple method that applies a transformation and then scatter plots the points colored by intensity.
         :param ax: Axes on which to render the points.
@@ -220,13 +255,15 @@ class PointCloud(ABC):
         """
         self._render_helper(3, ax, view, x_lim, y_lim, marker_size)
 
-    def _render_helper(self,
-                       color_channel: int,
-                       ax: Axes,
-                       view: np.ndarray,
-                       x_lim: Tuple[float, float],
-                       y_lim: Tuple[float, float],
-                       marker_size: float) -> None:
+    def _render_helper(
+        self,
+        color_channel: int,
+        ax: Axes,
+        view: np.ndarray,
+        x_lim: Tuple[float, float],
+        y_lim: Tuple[float, float],
+        marker_size: float,
+    ) -> None:
         """
         Helper function for rendering.
         :param color_channel: Point channel to use as color.
@@ -237,7 +274,7 @@ class PointCloud(ABC):
         :param marker_size: Marker size.
         """
         points = view_points(self.points[:3, :], view, normalize=False)
-        #ax.scatter(points[0, :], points[1, :], c=self.points[color_channel, :], s=marker_size)
+        # ax.scatter(points[0, :], points[1, :], c=self.points[color_channel, :], s=marker_size)
         ax.scatter(points[0, :], points[1, :], c="#c6c6c6", s=marker_size)
 
         ax.set_xlim(x_lim[0], x_lim[1])
@@ -255,17 +292,17 @@ class LidarPointCloud(PointCloud):
         return 4
 
     @classmethod
-    def from_file(cls, file_name: str) -> 'LidarPointCloud':
+    def from_file(cls, file_name: str) -> "LidarPointCloud":
         """
         Loads LIDAR data from binary numpy format. Data is stored as (x, y, z, intensity, ring index).
         :param file_name: Path of the pointcloud file on disk.
         :return: LidarPointCloud instance (x, y, z, intensity).
         """
 
-        assert file_name.endswith('.bin'), 'Unsupported filetype {}'.format(file_name)
+        assert file_name.endswith(".bin"), "Unsupported filetype {}".format(file_name)
 
         scan = np.fromfile(file_name, dtype=np.float32)
-        points = scan.reshape((-1, 5))[:, :cls.nbr_dims()]
+        points = scan.reshape((-1, 5))[:, : cls.nbr_dims()]
         return cls(points.T)
 
 
@@ -273,7 +310,9 @@ class RadarPointCloud(PointCloud):
 
     # Class-level settings for radar pointclouds, see from_file().
     invalid_states = [0]  # type: List[int]
-    dynprop_states = range(7)  # type: List[int] # Use [0, 2, 6] for moving objects only.
+    dynprop_states = range(
+        7
+    )  # type: List[int] # Use [0, 2, 6] for moving objects only.
     ambig_states = [3]  # type: List[int]
 
     @classmethod
@@ -306,11 +345,13 @@ class RadarPointCloud(PointCloud):
         return 18
 
     @classmethod
-    def from_file(cls,
-                  file_name: str,
-                  invalid_states: List[int] = None,
-                  dynprop_states: List[int] = None,
-                  ambig_states: List[int] = None) -> 'RadarPointCloud':
+    def from_file(
+        cls,
+        file_name: str,
+        invalid_states: List[int] = None,
+        dynprop_states: List[int] = None,
+        ambig_states: List[int] = None,
+    ) -> "RadarPointCloud":
         """
         Loads RADAR data from a Point Cloud Data file. See details below.
         :param file_name: The path of the pointcloud file.
@@ -391,38 +432,40 @@ class RadarPointCloud(PointCloud):
         7: <=100%
         """
 
-        assert file_name.endswith('.pcd'), 'Unsupported filetype {}'.format(file_name)
+        assert file_name.endswith(".pcd"), "Unsupported filetype {}".format(file_name)
 
         meta = []
-        with open(file_name, 'rb') as f:
+        with open(file_name, "rb") as f:
             for line in f:
-                line = line.strip().decode('utf-8')
+                line = line.strip().decode("utf-8")
                 meta.append(line)
-                if line.startswith('DATA'):
+                if line.startswith("DATA"):
                     break
 
             data_binary = f.read()
 
         # Get the header rows and check if they appear as expected.
-        assert meta[0].startswith('#'), 'First line must be comment'
-        assert meta[1].startswith('VERSION'), 'Second line must be VERSION'
-        sizes = meta[3].split(' ')[1:]
-        types = meta[4].split(' ')[1:]
-        counts = meta[5].split(' ')[1:]
-        width = int(meta[6].split(' ')[1])
-        height = int(meta[7].split(' ')[1])
-        data = meta[10].split(' ')[1]
+        assert meta[0].startswith("#"), "First line must be comment"
+        assert meta[1].startswith("VERSION"), "Second line must be VERSION"
+        sizes = meta[3].split(" ")[1:]
+        types = meta[4].split(" ")[1:]
+        counts = meta[5].split(" ")[1:]
+        width = int(meta[6].split(" ")[1])
+        height = int(meta[7].split(" ")[1])
+        data = meta[10].split(" ")[1]
         feature_count = len(types)
         assert width > 0
-        assert len([c for c in counts if c != c]) == 0, 'Error: COUNT not supported!'
-        assert height == 1, 'Error: height != 0 not supported!'
-        assert data == 'binary'
+        assert len([c for c in counts if c != c]) == 0, "Error: COUNT not supported!"
+        assert height == 1, "Error: height != 0 not supported!"
+        assert data == "binary"
 
         # Lookup table for how to decode the binaries.
-        unpacking_lut = {'F': {2: 'e', 4: 'f', 8: 'd'},
-                         'I': {1: 'b', 2: 'h', 4: 'i', 8: 'q'},
-                         'U': {1: 'B', 2: 'H', 4: 'I', 8: 'Q'}}
-        types_str = ''.join([unpacking_lut[t][int(s)] for t, s in zip(types, sizes)])
+        unpacking_lut = {
+            "F": {2: "e", 4: "f", 8: "d"},
+            "I": {1: "b", 2: "h", 4: "i", 8: "q"},
+            "U": {1: "B", 2: "H", 4: "I", 8: "Q"},
+        }
+        types_str = "".join([unpacking_lut[t][int(s)] for t, s in zip(types, sizes)])
 
         # Decode each point.
         offset = 0
@@ -448,8 +491,12 @@ class RadarPointCloud(PointCloud):
         points = np.array(points).transpose()
 
         # If no parameters are provided, use default settings.
-        invalid_states = cls.invalid_states if invalid_states is None else invalid_states
-        dynprop_states = cls.dynprop_states if dynprop_states is None else dynprop_states
+        invalid_states = (
+            cls.invalid_states if invalid_states is None else invalid_states
+        )
+        dynprop_states = (
+            cls.dynprop_states if dynprop_states is None else dynprop_states
+        )
         ambig_states = cls.ambig_states if ambig_states is None else ambig_states
 
         # Filter points with an invalid state.
@@ -468,17 +515,19 @@ class RadarPointCloud(PointCloud):
 
 
 class Box:
-    """ Simple data class representing a 3d box including, label, score and velocity. """
+    """Simple data class representing a 3d box including, label, score and velocity."""
 
-    def __init__(self,
-                 center: List[float],
-                 size: List[float],
-                 orientation: Quaternion,
-                 label: int = np.nan,
-                 score: float = np.nan,
-                 velocity: Tuple = (np.nan, np.nan, np.nan),
-                 name: str = None,
-                 token: str = None):
+    def __init__(
+        self,
+        center: List[float],
+        size: List[float],
+        orientation: Quaternion,
+        label: int = np.nan,
+        score: float = np.nan,
+        velocity: Tuple = (np.nan, np.nan, np.nan),
+        name: str = None,
+        token: str = None,
+    ):
         """
         :param center: Center of box given as x, y, z.
         :param size: Size of box in width, length, height.
@@ -509,21 +558,44 @@ class Box:
         center = np.allclose(self.center, other.center)
         wlh = np.allclose(self.wlh, other.wlh)
         orientation = np.allclose(self.orientation.elements, other.orientation.elements)
-        label = (self.label == other.label) or (np.isnan(self.label) and np.isnan(other.label))
-        score = (self.score == other.score) or (np.isnan(self.score) and np.isnan(other.score))
-        vel = (np.allclose(self.velocity, other.velocity) or
-               (np.all(np.isnan(self.velocity)) and np.all(np.isnan(other.velocity))))
+        label = (self.label == other.label) or (
+            np.isnan(self.label) and np.isnan(other.label)
+        )
+        score = (self.score == other.score) or (
+            np.isnan(self.score) and np.isnan(other.score)
+        )
+        vel = np.allclose(self.velocity, other.velocity) or (
+            np.all(np.isnan(self.velocity)) and np.all(np.isnan(other.velocity))
+        )
         return center and wlh and orientation and label and score and vel
 
     def __repr__(self):
-        repr_str = 'label: {}, score: {:.2f}, xyz: [{:.2f}, {:.2f}, {:.2f}], wlh: [{:.2f}, {:.2f}, {:.2f}], ' \
-                   'rot axis: [{:.2f}, {:.2f}, {:.2f}], ang(degrees): {:.2f}, ang(rad): {:.2f}, ' \
-                   'vel: {:.2f}, {:.2f}, {:.2f}, name: {}, token: {}'
+        repr_str = (
+            "label: {}, score: {:.2f}, xyz: [{:.2f}, {:.2f}, {:.2f}], wlh: [{:.2f}, {:.2f}, {:.2f}], "
+            "rot axis: [{:.2f}, {:.2f}, {:.2f}], ang(degrees): {:.2f}, ang(rad): {:.2f}, "
+            "vel: {:.2f}, {:.2f}, {:.2f}, name: {}, token: {}"
+        )
 
-        return repr_str.format(self.label, self.score, self.center[0], self.center[1], self.center[2], self.wlh[0],
-                               self.wlh[1], self.wlh[2], self.orientation.axis[0], self.orientation.axis[1],
-                               self.orientation.axis[2], self.orientation.degrees, self.orientation.radians,
-                               self.velocity[0], self.velocity[1], self.velocity[2], self.name, self.token)
+        return repr_str.format(
+            self.label,
+            self.score,
+            self.center[0],
+            self.center[1],
+            self.center[2],
+            self.wlh[0],
+            self.wlh[1],
+            self.wlh[2],
+            self.orientation.axis[0],
+            self.orientation.axis[1],
+            self.orientation.axis[2],
+            self.orientation.degrees,
+            self.orientation.radians,
+            self.velocity[0],
+            self.velocity[1],
+            self.velocity[2],
+            self.name,
+            self.token,
+        )
 
     @property
     def rotation_matrix(self) -> np.ndarray:
@@ -559,9 +631,9 @@ class Box:
         w, l, h = self.wlh * wlh_factor
 
         # 3D bounding box corners. (Convention: x points forward, y to the left, z up.)
-        x_corners = l / 2 * np.array([1,  1,  1,  1, -1, -1, -1, -1])
-        y_corners = w / 2 * np.array([1, -1, -1,  1,  1, -1, -1,  1])
-        z_corners = h / 2 * np.array([1,  1, -1, -1,  1,  1, -1, -1])
+        x_corners = l / 2 * np.array([1, 1, 1, 1, -1, -1, -1, -1])
+        y_corners = w / 2 * np.array([1, -1, -1, 1, 1, -1, -1, 1])
+        z_corners = h / 2 * np.array([1, 1, -1, -1, 1, 1, -1, -1])
         corners = np.vstack((x_corners, y_corners, z_corners))
 
         # Rotate
@@ -582,12 +654,14 @@ class Box:
         """
         return self.corners()[:, [2, 3, 7, 6]]
 
-    def render(self,
-               axis: Axes,
-               view: np.ndarray = np.eye(3),
-               normalize: bool = False,
-               colors: Tuple = ('b', 'r', 'k'),
-               linewidth: float = 2) -> None:
+    def render(
+        self,
+        axis: Axes,
+        view: np.ndarray = np.eye(3),
+        normalize: bool = False,
+        colors: Tuple = ("b", "r", "k"),
+        linewidth: float = 2,
+    ) -> None:
         """
         Renders the box in the provided Matplotlib axis.
         :param axis: Axis onto which the box should be drawn.
@@ -602,14 +676,22 @@ class Box:
         def draw_rect(selected_corners, color):
             prev = selected_corners[-1]
             for corner in selected_corners:
-                axis.plot([prev[0], corner[0]], [prev[1], corner[1]], color=color, linewidth=linewidth)
+                axis.plot(
+                    [prev[0], corner[0]],
+                    [prev[1], corner[1]],
+                    color=color,
+                    linewidth=linewidth,
+                )
                 prev = corner
 
         # Draw the sides
         for i in range(4):
-            axis.plot([corners.T[i][0], corners.T[i + 4][0]],
-                      [corners.T[i][1], corners.T[i + 4][1]],
-                      color=colors[2], linewidth=linewidth)
+            axis.plot(
+                [corners.T[i][0], corners.T[i + 4][0]],
+                [corners.T[i][1], corners.T[i + 4][1]],
+                color=colors[2],
+                linewidth=linewidth,
+            )
 
         # Draw front (first 4 corners) and rear (last 4 corners) rectangles(3d)/lines(2d)
         draw_rect(corners.T[:4], colors[0])
@@ -618,17 +700,22 @@ class Box:
         # Draw line indicating the front
         center_bottom_forward = np.mean(corners.T[2:4], axis=0)
         center_bottom = np.mean(corners.T[[2, 3, 7, 6]], axis=0)
-        axis.plot([center_bottom[0], center_bottom_forward[0]],
-                  [center_bottom[1], center_bottom_forward[1]],
-                  color=colors[0], linewidth=linewidth)
+        axis.plot(
+            [center_bottom[0], center_bottom_forward[0]],
+            [center_bottom[1], center_bottom_forward[1]],
+            color=colors[0],
+            linewidth=linewidth,
+        )
 
-    def render_forecast(self,
-               axis: Axes,
-               view: np.ndarray = np.eye(3),
-               normalize: bool = False,
-               colors: Tuple = ('b', 'r', 'k'),
-               linewidth: float = 2,
-               center= []) -> None:
+    def render_forecast(
+        self,
+        axis: Axes,
+        view: np.ndarray = np.eye(3),
+        normalize: bool = False,
+        colors: Tuple = ("b", "r", "k"),
+        linewidth: float = 2,
+        center=[],
+    ) -> None:
         """
         Renders the box in the provided Matplotlib axis.
         :param axis: Axis onto which the box should be drawn.
@@ -651,14 +738,24 @@ class Box:
         def draw_rect(selected_corners, color, alpha):
             prev = selected_corners[-1]
             for corner in selected_corners:
-                axis.plot([prev[0], corner[0]], [prev[1], corner[1]], color=color, linewidth=linewidth, alpha = alpha)
+                axis.plot(
+                    [prev[0], corner[0]],
+                    [prev[1], corner[1]],
+                    color=color,
+                    linewidth=linewidth,
+                    alpha=alpha,
+                )
                 prev = corner
 
         # Draw the sides
         for i in range(4):
-            axis.plot([corners.T[i][0], corners.T[i + 4][0]],
-                      [corners.T[i][1], corners.T[i + 4][1]],
-                      color=colors[2], linewidth=linewidth, alpha=alpha)
+            axis.plot(
+                [corners.T[i][0], corners.T[i + 4][0]],
+                [corners.T[i][1], corners.T[i + 4][1]],
+                color=colors[2],
+                linewidth=linewidth,
+                alpha=alpha,
+            )
 
         # Draw front (first 4 corners) and rear (last 4 corners) rectangles(3d)/lines(2d)
         draw_rect(corners.T[:4], colors[0], alpha)
@@ -667,23 +764,35 @@ class Box:
         # Draw line indicating the front
         center_bottom_forward = np.mean(corners.T[2:4], axis=0)
         center_bottom = np.mean(corners.T[[2, 3, 7, 6]], axis=0)
-        axis.plot([center_bottom[0], center_bottom_forward[0]],
-                  [center_bottom[1], center_bottom_forward[1]],
-                  color=colors[0], linewidth=linewidth, alpha=alpha)
+        axis.plot(
+            [center_bottom[0], center_bottom_forward[0]],
+            [center_bottom[1], center_bottom_forward[1]],
+            color=colors[0],
+            linewidth=linewidth,
+            alpha=alpha,
+        )
 
         for pt1, pt2 in window(center, 2):
             pt1, pt2 = pt1[:2], pt2[:2]
-            axis.plot([pt1[0], pt2[0]], [pt1[1], pt2[1]], '{}o--'.format(colors[0]), markersize=4, alpha=alpha)
+            axis.plot(
+                [pt1[0], pt2[0]],
+                [pt1[1], pt2[1]],
+                "{}o--".format(colors[0]),
+                markersize=4,
+                alpha=alpha,
+            )
 
-        #circle = plt.Circle((center[-1][0], center[-1][1]), max(self.wlh[0] / 2, self.wlh[1] / 2), color=colors[0], fill=False)
-        #axis.add_patch(circle)
+        # circle = plt.Circle((center[-1][0], center[-1][1]), max(self.wlh[0] / 2, self.wlh[1] / 2), color=colors[0], fill=False)
+        # axis.add_patch(circle)
 
-    def render_cv2(self,
-                   im: np.ndarray,
-                   view: np.ndarray = np.eye(3),
-                   normalize: bool = False,
-                   colors: Tuple = ((0, 0, 255), (255, 0, 0), (155, 155, 155)),
-                   linewidth: int = 2) -> None:
+    def render_cv2(
+        self,
+        im: np.ndarray,
+        view: np.ndarray = np.eye(3),
+        normalize: bool = False,
+        colors: Tuple = ((0, 0, 255), (255, 0, 0), (155, 155, 155)),
+        linewidth: int = 2,
+    ) -> None:
         """
         Renders box using OpenCV2.
         :param im: <np.array: width, height, 3>. Image array. Channels are in BGR order.
@@ -697,18 +806,24 @@ class Box:
         def draw_rect(selected_corners, color):
             prev = selected_corners[-1]
             for corner in selected_corners:
-                cv2.line(im,
-                         (int(prev[0]), int(prev[1])),
-                         (int(corner[0]), int(corner[1])),
-                         color, linewidth)
+                cv2.line(
+                    im,
+                    (int(prev[0]), int(prev[1])),
+                    (int(corner[0]), int(corner[1])),
+                    color,
+                    linewidth,
+                )
                 prev = corner
 
         # Draw the sides
         for i in range(4):
-            cv2.line(im,
-                     (int(corners.T[i][0]), int(corners.T[i][1])),
-                     (int(corners.T[i + 4][0]), int(corners.T[i + 4][1])),
-                     colors[2][::-1], linewidth)
+            cv2.line(
+                im,
+                (int(corners.T[i][0]), int(corners.T[i][1])),
+                (int(corners.T[i + 4][0]), int(corners.T[i + 4][1])),
+                colors[2][::-1],
+                linewidth,
+            )
 
         # Draw front (first 4 corners) and rear (last 4 corners) rectangles(3d)/lines(2d)
         draw_rect(corners.T[:4], colors[0][::-1])
@@ -717,12 +832,15 @@ class Box:
         # Draw line indicating the front
         center_bottom_forward = np.mean(corners.T[2:4], axis=0)
         center_bottom = np.mean(corners.T[[2, 3, 7, 6]], axis=0)
-        cv2.line(im,
-                 (int(center_bottom[0]), int(center_bottom[1])),
-                 (int(center_bottom_forward[0]), int(center_bottom_forward[1])),
-                 colors[0][::-1], linewidth)
+        cv2.line(
+            im,
+            (int(center_bottom[0]), int(center_bottom[1])),
+            (int(center_bottom_forward[0]), int(center_bottom_forward[1])),
+            colors[0][::-1],
+            linewidth,
+        )
 
-    def copy(self) -> 'Box':
+    def copy(self) -> "Box":
         """
         Create a copy of self.
         :return: A copy.

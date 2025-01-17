@@ -323,8 +323,8 @@ def bev_box_overlap(boxes, qboxes, criterion=-1, stable=False):
 @numba.jit(nopython=True, parallel=True)
 def box3d_overlap_kernel(boxes, qboxes, rinc, criterion=-1, z_axis=1, z_center=1.0):
     """
-        z_axis: the z (height) axis.
-        z_center: unified z (height) center of box.
+    z_axis: the z (height) axis.
+    z_center: unified z (height) center of box.
     """
     N, K = boxes.shape[0], qboxes.shape[0]
     for i in range(N):
@@ -357,8 +357,7 @@ def box3d_overlap_kernel(boxes, qboxes, rinc, criterion=-1, z_axis=1, z_center=1
 
 
 def box3d_overlap(boxes, qboxes, criterion=-1, z_axis=1, z_center=1.0):
-    """kitti camera format z_axis=1.
-    """
+    """kitti camera format z_axis=1."""
     bev_axes = list(range(7))
     bev_axes.pop(z_axis + 3)
     bev_axes.pop(z_axis)

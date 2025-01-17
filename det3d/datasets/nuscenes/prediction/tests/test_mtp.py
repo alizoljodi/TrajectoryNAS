@@ -23,37 +23,48 @@ class TestMTP(unittest.TestCase):
 
         model.training = False
         pred = model(self.image, self.agent_state_vector)
-        self.assertTrue(torch.allclose(pred[:, -3:].sum(axis=1), torch.ones(pred.shape[0])))
+        self.assertTrue(
+            torch.allclose(pred[:, -3:].sum(axis=1), torch.ones(pred.shape[0]))
+        )
 
-    def test_works_with_resnet_18(self,):
-        rn_18 = backbone.ResNetBackbone('resnet18')
+    def test_works_with_resnet_18(
+        self,
+    ):
+        rn_18 = backbone.ResNetBackbone("resnet18")
         model = mtp.MTP(rn_18, 3, 6, 2, input_shape=(3, 100, 100))
         self._run(model)
 
-    def test_works_with_resnet_34(self,):
-        rn_34 = backbone.ResNetBackbone('resnet34')
+    def test_works_with_resnet_34(
+        self,
+    ):
+        rn_34 = backbone.ResNetBackbone("resnet34")
         model = mtp.MTP(rn_34, 3, 6, 2, input_shape=(3, 100, 100))
         self._run(model)
 
-    def test_works_with_resnet_50(self,):
-        rn_50 = backbone.ResNetBackbone('resnet50')
+    def test_works_with_resnet_50(
+        self,
+    ):
+        rn_50 = backbone.ResNetBackbone("resnet50")
         model = mtp.MTP(rn_50, 3, 6, 2, input_shape=(3, 100, 100))
         self._run(model)
 
-    def test_works_with_resnet_101(self,):
-        rn_101 = backbone.ResNetBackbone('resnet101')
+    def test_works_with_resnet_101(
+        self,
+    ):
+        rn_101 = backbone.ResNetBackbone("resnet101")
         model = mtp.MTP(rn_101, 3, 6, 2, input_shape=(3, 100, 100))
         self._run(model)
 
-    def test_works_with_resnet_152(self,):
-        rn_152 = backbone.ResNetBackbone('resnet152')
+    def test_works_with_resnet_152(
+        self,
+    ):
+        rn_152 = backbone.ResNetBackbone("resnet152")
         model = mtp.MTP(rn_152, 3, 6, 2, input_shape=(3, 100, 100))
         self._run(model)
 
-    def test_works_with_mobilenet_v2(self,):
-        mobilenet = backbone.MobileNetBackbone('mobilenet_v2')
+    def test_works_with_mobilenet_v2(
+        self,
+    ):
+        mobilenet = backbone.MobileNetBackbone("mobilenet_v2")
         model = mtp.MTP(mobilenet, 3, 6, 2, input_shape=(3, 100, 100))
         self._run(model)
-
-
-

@@ -27,7 +27,9 @@ class Dataset(IterableDataset):
     def __init__(self, num_modes: int = 1):
         self.num_modes = num_modes
 
-    def __iter__(self,):
+    def __iter__(
+        self,
+    ):
 
         while True:
             image = torch.zeros((3, 100, 100))
@@ -49,20 +51,26 @@ class Dataset(IterableDataset):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Run MTP to make sure it overfits on a single test case.')
-    parser.add_argument('--num_modes', type=int, help='How many modes to learn.', default=1)
-    parser.add_argument('--use_gpu', type=bool, help='Whether to use gpu', default=False)
+    parser = argparse.ArgumentParser(
+        description="Run MTP to make sure it overfits on a single test case."
+    )
+    parser.add_argument(
+        "--num_modes", type=int, help="How many modes to learn.", default=1
+    )
+    parser.add_argument(
+        "--use_gpu", type=bool, help="Whether to use gpu", default=False
+    )
     args = parser.parse_args()
 
     if args.use_gpu:
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     else:
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
     dataset = Dataset(args.num_modes)
     dataloader = DataLoader(dataset, batch_size=16, num_workers=0)
 
-    backbone = ResNetBackbone('resnet18')
+    backbone = ResNetBackbone("resnet18")
     model = MTP(backbone, args.num_modes)
     model = model.to(device)
 
@@ -106,4 +114,3 @@ if __name__ == "__main__":
             break
 
         n_iter += 1
-

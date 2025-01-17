@@ -11,7 +11,7 @@ from .sampler import (
     DistributedSamplerV2,
     GroupSampler,
 )
-import pdb 
+import pdb
 
 if platform.system() != "Windows":
     # https://github.com/pytorch/pytorch/issues/973
@@ -51,7 +51,7 @@ def build_dataloader(
         sampler=sampler,
         shuffle=(sampler is None),
         num_workers=num_workers,
-        collate_fn = collate_kitti_multi,
+        collate_fn=collate_kitti_multi,
         # pin_memory=True,
         pin_memory=False,
     )

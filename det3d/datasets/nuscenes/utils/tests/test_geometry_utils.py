@@ -26,37 +26,39 @@ class TestGeometryUtils(unittest.TestCase):
             self.assertAlmostEqual(yaw_true, yaw_test)
 
         # Non unit axis vector.
-        yaw_in = np.pi/4
+        yaw_in = np.pi / 4
         q = Quaternion(axis=(0, 0, 0.5), angle=yaw_in)
         yaw_test = quaternion_yaw(q)
         self.assertAlmostEqual(yaw_in, yaw_test)
 
         # Inverted axis vector.
-        yaw_in = np.pi/4
+        yaw_in = np.pi / 4
         q = Quaternion(axis=(0, 0, -1), angle=yaw_in)
         yaw_test = -quaternion_yaw(q)
         self.assertAlmostEqual(yaw_in, yaw_test)
 
         # Rotate around another axis.
-        yaw_in = np.pi/4
+        yaw_in = np.pi / 4
         q = Quaternion(axis=(0, 1, 0), angle=yaw_in)
         yaw_test = quaternion_yaw(q)
         self.assertAlmostEqual(0, yaw_test)
 
         # Rotate around two axes jointly.
-        yaw_in = np.pi/2
+        yaw_in = np.pi / 2
         q = Quaternion(axis=(0, 1, 1), angle=yaw_in)
         yaw_test = quaternion_yaw(q)
         self.assertAlmostEqual(yaw_in, yaw_test)
 
         # Rotate around two axes separately.
-        yaw_in = np.pi/2
-        q = Quaternion(axis=(0, 0, 1), angle=yaw_in) * Quaternion(axis=(0, 1, 0), angle=0.5821)
+        yaw_in = np.pi / 2
+        q = Quaternion(axis=(0, 0, 1), angle=yaw_in) * Quaternion(
+            axis=(0, 1, 0), angle=0.5821
+        )
         yaw_test = quaternion_yaw(q)
         self.assertAlmostEqual(yaw_in, yaw_test)
 
     def test_points_in_box(self):
-        """ Test the box.in_box method. """
+        """Test the box.in_box method."""
 
         vel = (np.nan, np.nan, np.nan)
 
@@ -84,8 +86,17 @@ class TestGeometryUtils(unittest.TestCase):
         # Check rotation (45 degs) and translation (by [1,1])
         rot = 45
         trans = [1.0, 1.0]
-        box = Box([0.0+trans[0], 0.0+trans[1], 0.0], [2.0, 2.0, 0.0], qyaw(rot / 180.0 * np.pi), 1, 2.0, vel)
-        points = np.array([[0.70+trans[0], 0.70+trans[1], 0.0], [0.71+1.0, 0.71+1.0, 0.0]]).transpose()
+        box = Box(
+            [0.0 + trans[0], 0.0 + trans[1], 0.0],
+            [2.0, 2.0, 0.0],
+            qyaw(rot / 180.0 * np.pi),
+            1,
+            2.0,
+            vel,
+        )
+        points = np.array(
+            [[0.70 + trans[0], 0.70 + trans[1], 0.0], [0.71 + 1.0, 0.71 + 1.0, 0.0]]
+        ).transpose()
         mask = points_in_box(box, points, wlh_factor=1.0)
         self.assertEqual(mask[0], True)
         self.assertEqual(mask[1], False)
@@ -111,5 +122,5 @@ class TestGeometryUtils(unittest.TestCase):
             self.assertEqual(mask[1], False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -4,7 +4,7 @@ import os
 # Define the path to the config.py file
 config_path = "/media/asghar/media/FutureDet-NAS/confge.py"
 
-model='''model = dict(
+model = """model = dict(
     type="VoxelNet",
     pretrained=None,
     reader=dict(
@@ -45,7 +45,7 @@ model='''model = dict(
         classify=CLASSIFY,
         wide_head=WIDE,
     ),
-)'''
+)"""
 # Check if the file exists
 if os.path.isfile(config_path):
     # Open the file in read mode
@@ -53,9 +53,9 @@ if os.path.isfile(config_path):
         # Read the contents of the file
         config_content = file.read()
 
-
     # Manipulate the contents of the file
-    config_content = config_content.replace('''model = dict(
+    config_content = config_content.replace(
+        """model = dict(
     type="VoxelNet",
     pretrained=None,
     reader=dict(
@@ -96,8 +96,10 @@ if os.path.isfile(config_path):
         classify=CLASSIFY,
         wide_head=WIDE,
     ),
-    )''', model)
-    save_path='./cog.py'
+    )""",
+        model,
+    )
+    save_path = "./cog.py"
     # Open the file in write mode
     with open(save_path, "w") as file:
         # Write the modified contents back to the file

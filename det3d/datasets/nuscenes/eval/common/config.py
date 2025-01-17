@@ -17,21 +17,27 @@ def config_factory(configuration_name: str) -> Union[DetectionConfig, TrackingCo
     :return: *Config instance.
     """
     # Check if config exists.
-    tokens = configuration_name.split('_')
-    assert len(tokens) > 1, 'Error: Configuration name must be have prefix "detection_" or "tracking_"!'
+    tokens = configuration_name.split("_")
+    assert (
+        len(tokens) > 1
+    ), 'Error: Configuration name must be have prefix "detection_" or "tracking_"!'
     task = tokens[0]
     this_dir = os.path.dirname(os.path.abspath(__file__))
-    cfg_path = os.path.join(this_dir, '..', task, 'configs', '%s.json' % configuration_name)
-    assert os.path.exists(cfg_path), 'Requested unknown configuration {}'.format(configuration_name)
+    cfg_path = os.path.join(
+        this_dir, "..", task, "configs", "%s.json" % configuration_name
+    )
+    assert os.path.exists(cfg_path), "Requested unknown configuration {}".format(
+        configuration_name
+    )
 
     # Load config file and deserialize it.
-    with open(cfg_path, 'r') as f:
+    with open(cfg_path, "r") as f:
         data = json.load(f)
-    if task == 'detection':
+    if task == "detection":
         cfg = DetectionConfig.deserialize(data)
-    elif task == 'tracking':
+    elif task == "tracking":
         cfg = TrackingConfig.deserialize(data)
     else:
-        raise Exception('Error: Invalid config file name: %s' % configuration_name)
+        raise Exception("Error: Invalid config file name: %s" % configuration_name)
 
     return cfg

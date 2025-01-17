@@ -2,7 +2,7 @@ from datetime import time
 import numpy as np
 import cv2
 import pickle
-import pdb 
+import pdb
 from pathlib import Path
 from functools import reduce
 from typing import List
@@ -23,7 +23,7 @@ try:
 except:
     print("nuScenes devkit not Found!")
 
-import pdb 
+import pdb
 
 general_to_detection = {
     "human.pedestrian.adult": "pedestrian",
@@ -164,11 +164,12 @@ cls_attr_dist = {
     # },
 }
 
+
 def _second_det_to_nusc_box(detection):
     box3d = detection["box3d_lidar"].detach().cpu().numpy()
     scores = detection["scores"].detach().cpu().numpy()
     labels = detection["label_preds"].detach().cpu().numpy()
-    
+
     box3d[:, -1] = -box3d[:, -1] - np.pi / 2
 
     box_list = []
@@ -176,14 +177,14 @@ def _second_det_to_nusc_box(detection):
         quat = Quaternion(axis=[0, 0, 1], radians=box3d[i, -1])
         velocity = (*box3d[i, 6:8], 0.0)
         box = Box(
-            center = box3d[i, :3],
-            size = box3d[i, 3:6],
+            center=box3d[i, :3],
+            size=box3d[i, 3:6],
             orientation=quat,
             label=labels[i],
             score=scores[i],
             velocity=velocity,
         )
-        
+
         box_list.append(box)
 
     return box_list
@@ -238,9 +239,7 @@ def _get_available_scenes(nusc):
     return available_scenes
 
 
-def get_sample_data(
-    nusc, sample_data_token: str, selected_anntokens: List[str] = None
-):
+def get_sample_data(nusc, sample_data_token: str, selected_anntokens: List[str] = None):
     """
     Returns the data path as well as all annotations related to that sample_data.
     Note that the boxes are transformed into the current sensor's coordinate frame.
@@ -284,6 +283,7 @@ def get_sample_data(
 
     return data_path, box_list, cam_intrinsic
 
+
 def window(iterable, size):
     iters = tee(iterable, size)
     for i in range(1, size):
@@ -292,12 +292,14 @@ def window(iterable, size):
 
     return zip(*iters)
 
+
 def get_time(nusc, src_token, dst_token):
-    time_last = 1e-6 * nusc.get('sample', src_token)["timestamp"]
-    time_first = 1e-6 * nusc.get('sample', dst_token)["timestamp"]
+    time_last = 1e-6 * nusc.get("sample", src_token)["timestamp"]
+    time_first = 1e-6 * nusc.get("sample", dst_token)["timestamp"]
     time_diff = time_first - time_last
 
-    return time_diff 
+    return time_diff
+
 
 def center_distance(gt_box, pred_box) -> float:
     """
@@ -308,9 +310,10 @@ def center_distance(gt_box, pred_box) -> float:
     """
     return np.linalg.norm(np.array(pred_box.center[:2]) - np.array(gt_box.center[:2]))
 
+
 def trajectory(nusc, boxes, time, timesteps=7, past=False):
     target = boxes[-1]
-    
+
     static_forecast = deepcopy(boxes[0])
 
     linear_forecast = deepcopy(boxes[0])
@@ -322,7 +325,7 @@ def trajectory(nusc, boxes, time, timesteps=7, past=False):
 
     else:
         linear_forecast.center = linear_forecast.center + disp
-    
+
     if center_distance(target, static_forecast) < max(target.wlh[0], target.wlh[1]):
         return "static"
 
@@ -332,9 +335,10 @@ def trajectory(nusc, boxes, time, timesteps=7, past=False):
     else:
         return "nonlinear"
 
+
 def get_annotations(nusc, annotations, ref_boxes, timesteps, past):
     forecast_annotations = []
-    forecast_boxes = []   
+    forecast_boxes = []
     forecast_trajectory = []
     sample_tokens = [s["token"] for s in nusc.sample]
 
@@ -343,19 +347,23 @@ def get_annotations(nusc, annotations, ref_boxes, timesteps, past):
         tracklet_annotation = []
         tracklet_trajectory = []
 
-        token = nusc.sample[sample_tokens.index(annotation["sample_token"])]["data"]["LIDAR_TOP"]
+        token = nusc.sample[sample_tokens.index(annotation["sample_token"])]["data"][
+            "LIDAR_TOP"
+        ]
         sd_record = nusc.get("sample_data", token)
         cs_record = nusc.get("calibrated_sensor", sd_record["calibrated_sensor_token"])
         pose_record = nusc.get("ego_pose", sd_record["ego_pose_token"])
 
         pannotation = annotation
         for i in range(timesteps):
-            box = Box(center = annotation["translation"],
-                      size = ref_box.wlh,
-                      orientation = Quaternion(annotation["rotation"]),
-                      velocity = nusc.box_velocity(annotation["token"]),
-                      name = annotation["category_name"],
-                      token = annotation["token"])
+            box = Box(
+                center=annotation["translation"],
+                size=ref_box.wlh,
+                orientation=Quaternion(annotation["rotation"]),
+                velocity=nusc.box_velocity(annotation["token"]),
+                name=annotation["category_name"],
+                token=annotation["token"],
+            )
 
             box.translate(-np.array(pose_record["translation"]))
             box.rotate(Quaternion(pose_record["rotation"]).inverse)
@@ -366,36 +374,46 @@ def get_annotations(nusc, annotations, ref_boxes, timesteps, past):
 
             tracklet_box.append(box)
             tracklet_annotation.append(annotation)
-            
+
             next_token = annotation["next"]
             prev_token = pannotation["prev"]
 
             if past:
                 if next_token != "":
                     pannotation = nusc.get("sample_annotation", next_token)
-                
+
                 if prev_token != "":
                     annotation = nusc.get("sample_annotation", prev_token)
             else:
                 if next_token != "":
                     annotation = nusc.get("sample_annotation", next_token)
-                
+
                 if prev_token != "":
                     pannotation = nusc.get("sample_annotation", prev_token)
-        
+
         tokens = [b["sample_token"] for b in tracklet_annotation]
         time = [get_time(nusc, src, dst) for src, dst in window(tokens, 2)]
         tracklet_trajectory = trajectory(nusc, tracklet_box, time, timesteps)
 
         forecast_boxes.append(tracklet_box)
         forecast_annotations.append(tracklet_annotation)
-        forecast_trajectory.append(timesteps*[tracklet_trajectory])
+        forecast_trajectory.append(timesteps * [tracklet_trajectory])
 
     return forecast_boxes, forecast_annotations, forecast_trajectory
 
-def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=20, filter_zero=True, timesteps=7, past=False):
+
+def _fill_trainval_infos(
+    nusc,
+    train_scenes,
+    val_scenes,
+    test=False,
+    nsweeps=20,
+    filter_zero=True,
+    timesteps=7,
+    past=False,
+):
     from nuscenes.utils.geometry_utils import transform_matrix
-    
+
     train_nusc_infos = []
     val_nusc_infos = []
 
@@ -403,7 +421,7 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=20,
     chan = "LIDAR_TOP"  # The reference channel of the current sample_rec that the point clouds are mapped to.
 
     for sample in tqdm(nusc.sample):
-        """ Manual save info["sweeps"] """
+        """Manual save info["sweeps"]"""
         # Get reference pose and timestamp
         # ref_chan == "LIDAR_TOP"
         ref_sd_token = sample["data"][ref_chan]
@@ -441,7 +459,6 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=20,
             "car_from_global": car_from_global,
             "timestamp": ref_time,
         }
-
 
         sample_data_token = sample["data"][chan]
         curr_sd_rec = nusc.get("sample_data", sample_data_token)
@@ -502,25 +519,58 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=20,
 
         info["sweeps"] = sweeps
 
-        assert (len(info["sweeps"]) == nsweeps - 1), f"sweep {curr_sd_rec['token']} only has {len(info['sweeps'])} sweeps, you should duplicate to sweep num {nsweeps-1}"
+        assert (
+            len(info["sweeps"]) == nsweeps - 1
+        ), f"sweep {curr_sd_rec['token']} only has {len(info['sweeps'])} sweeps, you should duplicate to sweep num {nsweeps-1}"
         """ read from api """
         if not test:
             ego_map = nusc.get_ego_centric_map(sweeps[0]["sample_data_token"])
             bev = cv2.resize(ego_map, dsize=(180, 180), interpolation=cv2.INTER_CUBIC)
 
-            annotations = [nusc.get("sample_annotation", token) for token in sample["anns"]]
-            forecast_boxes, forecast_annotations, forecast_trajectory = get_annotations(nusc, annotations, ref_boxes, timesteps, past)
+            annotations = [
+                nusc.get("sample_annotation", token) for token in sample["anns"]
+            ]
+            forecast_boxes, forecast_annotations, forecast_trajectory = get_annotations(
+                nusc, annotations, ref_boxes, timesteps, past
+            )
 
-            mask = np.array([(anno['num_lidar_pts'] + anno['num_radar_pts']) > 0 for anno in annotations], dtype=bool).reshape(-1)
-            locs = [np.array([b.center for b in boxes]).reshape(-1, 3) for boxes in forecast_boxes]
-            rlocs = [np.array([b.center for b in boxes]).reshape(-1, 3) for boxes in forecast_boxes]
+            mask = np.array(
+                [
+                    (anno["num_lidar_pts"] + anno["num_radar_pts"]) > 0
+                    for anno in annotations
+                ],
+                dtype=bool,
+            ).reshape(-1)
+            locs = [
+                np.array([b.center for b in boxes]).reshape(-1, 3)
+                for boxes in forecast_boxes
+            ]
+            rlocs = [
+                np.array([b.center for b in boxes]).reshape(-1, 3)
+                for boxes in forecast_boxes
+            ]
 
-            dims = [np.array([b.wlh for b in boxes]).reshape(-1, 3) for boxes in forecast_boxes]
+            dims = [
+                np.array([b.wlh for b in boxes]).reshape(-1, 3)
+                for boxes in forecast_boxes
+            ]
             # rots = np.array([b.orientation.yaw_pitch_roll[0] for b in ref_boxes]).reshape(-1, 1)
-            velocity = [np.array([b.velocity for b in boxes]).reshape(-1, 3) for boxes in forecast_boxes]
-            rvelocity = [np.array([b.velocity for b in boxes]).reshape(-1, 3) for boxes in forecast_boxes]
-            rots = [np.array([quaternion_yaw(b.orientation) for b in boxes]).reshape(-1, 1) for boxes in forecast_boxes]
-            rrots = [np.array([quaternion_yaw(b.orientation) for b in boxes]).reshape(-1, 1) for boxes in forecast_boxes]
+            velocity = [
+                np.array([b.velocity for b in boxes]).reshape(-1, 3)
+                for boxes in forecast_boxes
+            ]
+            rvelocity = [
+                np.array([b.velocity for b in boxes]).reshape(-1, 3)
+                for boxes in forecast_boxes
+            ]
+            rots = [
+                np.array([quaternion_yaw(b.orientation) for b in boxes]).reshape(-1, 1)
+                for boxes in forecast_boxes
+            ]
+            rrots = [
+                np.array([quaternion_yaw(b.orientation) for b in boxes]).reshape(-1, 1)
+                for boxes in forecast_boxes
+            ]
 
             names = [np.array([b.name for b in boxes]) for boxes in forecast_boxes]
             tokens = [np.array([b.token for b in boxes]) for boxes in forecast_boxes]
@@ -528,7 +578,20 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=20,
 
             trajectory = [np.array([b for b in boxes]) for boxes in forecast_trajectory]
 
-            gt_boxes = [np.concatenate([locs[i], dims[i], velocity[i][:, :2], rvelocity[i][:, :2], -rots[i] - np.pi / 2, -rrots[i] - np.pi / 2], axis=1) for i in range(len(annotations))]
+            gt_boxes = [
+                np.concatenate(
+                    [
+                        locs[i],
+                        dims[i],
+                        velocity[i][:, :2],
+                        rvelocity[i][:, :2],
+                        -rots[i] - np.pi / 2,
+                        -rrots[i] - np.pi / 2,
+                    ],
+                    axis=1,
+                )
+                for i in range(len(annotations))
+            ]
             # gt_boxes = np.concatenate([locs, dims, rots], axis=1)
             assert len(annotations) == len(gt_boxes) == len(velocity) == len(rvelocity)
 
@@ -537,7 +600,9 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=20,
                     info["gt_boxes"] = np.array(gt_boxes)
                     info["gt_boxes_velocity"] = np.array(velocity)
                     info["gt_boxes_rvelocity"] = np.array(rvelocity)
-                    info["gt_names"] = np.array([[general_to_detection[n] for n in name] for name in names])
+                    info["gt_names"] = np.array(
+                        [[general_to_detection[n] for n in name] for name in names]
+                    )
                     info["gt_boxes_token"] = np.array(tokens)
                     info["gt_boxes_rtoken"] = np.array(rtokens)
                     info["gt_trajectory"] = np.array(trajectory)
@@ -547,34 +612,49 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=20,
                     info["gt_boxes"] = np.array(gt_boxes)[mask, :]
                     info["gt_boxes_velocity"] = np.array(velocity)[mask, :]
                     info["gt_boxes_rvelocity"] = np.array(rvelocity)[mask, :]
-                    info["gt_names"] = np.array([[general_to_detection[n] for n in name] for name in names])[mask]
+                    info["gt_names"] = np.array(
+                        [[general_to_detection[n] for n in name] for name in names]
+                    )[mask]
                     info["gt_boxes_token"] = np.array(tokens)[mask]
                     info["gt_boxes_rtoken"] = np.array(rtokens)[mask]
                     info["gt_trajectory"] = np.array(trajectory)[mask]
                     info["bev"] = bev
             else:
-                mask = np.array([(anno['num_lidar_pts'] + anno['num_radar_pts']) >0 for anno in annotations], dtype=bool).reshape(-1)
+                mask = np.array(
+                    [
+                        (anno["num_lidar_pts"] + anno["num_radar_pts"]) > 0
+                        for anno in annotations
+                    ],
+                    dtype=bool,
+                ).reshape(-1)
 
                 locs = np.array([b.center for b in ref_boxes]).reshape(-1, 3)
                 dims = np.array([b.wlh for b in ref_boxes]).reshape(-1, 3)
                 # rots = np.array([b.orientation.yaw_pitch_roll[0] for b in ref_boxes]).reshape(-1, 1)
                 velocity = np.array([b.velocity for b in ref_boxes]).reshape(-1, 3)
                 rvelocity = np.array([b.rvelocity for b in ref_boxes]).reshape(-1, 3)
-                rots = np.array([quaternion_yaw(b.orientation) for b in ref_boxes]).reshape(-1, 1)
+                rots = np.array(
+                    [quaternion_yaw(b.orientation) for b in ref_boxes]
+                ).reshape(-1, 1)
                 names = np.array([b.name for b in ref_boxes])
                 tokens = np.array([b.token for b in ref_boxes])
-                gt_boxes = np.concatenate([locs, dims, velocity[:, :2], rvelocity[:, :2], -rots - np.pi / 2], axis=1)
+                gt_boxes = np.concatenate(
+                    [locs, dims, velocity[:, :2], rvelocity[:, :2], -rots - np.pi / 2],
+                    axis=1,
+                )
                 trajectory = np.array(["static" for b in ref_boxes])
 
                 info["gt_boxes"] = gt_boxes
                 info["gt_boxes_velocity"] = velocity
                 info["gt_boxes_rvelocity"] = rvelocity
-                info["gt_names"] = np.array([general_to_detection[name] for name in names])
+                info["gt_names"] = np.array(
+                    [general_to_detection[name] for name in names]
+                )
                 info["gt_boxes_token"] = tokens
                 info["gt_boxes_rtoken"] = tokens
                 info["gt_boxes_rtoken"] = tokens
                 info["gt_trajectory"] = trajectory
-                info['bev'] = bev
+                info["bev"] = bev
 
         if sample["scene_token"] in train_scenes:
             train_nusc_infos.append(info)
@@ -602,7 +682,15 @@ def quaternion_yaw(q: Quaternion) -> float:
     return yaw
 
 
-def create_nuscenes_infos(root_path, version="v1.0-trainval", experiment="trainval_forecast", nsweeps=20, filter_zero=True, timesteps=7, past=False):
+def create_nuscenes_infos(
+    root_path,
+    version="v1.0-trainval",
+    experiment="trainval_forecast",
+    nsweeps=20,
+    filter_zero=True,
+    timesteps=7,
+    past=False,
+):
     nusc = NuScenes(version=version, dataroot=root_path, verbose=True)
     available_vers = ["v1.0-trainval", "v1.0-test", "v1.0-mini"]
     assert version in available_vers
@@ -641,13 +729,21 @@ def create_nuscenes_infos(root_path, version="v1.0-trainval", experiment="trainv
         print(f"train scene: {len(train_scenes)}, val scene: {len(val_scenes)}")
 
     train_nusc_infos, val_nusc_infos = _fill_trainval_infos(
-        nusc, train_scenes, val_scenes, test, nsweeps=nsweeps, filter_zero=filter_zero, timesteps=timesteps
+        nusc,
+        train_scenes,
+        val_scenes,
+        test,
+        nsweeps=nsweeps,
+        filter_zero=filter_zero,
+        timesteps=timesteps,
     )
 
     if test:
         print(f"test sample: {len(train_nusc_infos)}")
         with open(
-            root_path / "{}/infos_test_{:02d}sweeps_withvelo.pkl".format(experiment, nsweeps), "wb"
+            root_path
+            / "{}/infos_test_{:02d}sweeps_withvelo.pkl".format(experiment, nsweeps),
+            "wb",
         ) as f:
             pickle.dump(train_nusc_infos, f)
     else:
@@ -655,20 +751,41 @@ def create_nuscenes_infos(root_path, version="v1.0-trainval", experiment="trainv
             f"train sample: {len(train_nusc_infos)}, val sample: {len(val_nusc_infos)}"
         )
         with open(
-            root_path / "{}/infos_train_{:02d}sweeps_withvelo_filter_{}.pkl".format(experiment, nsweeps, filter_zero), "wb"
+            root_path
+            / "{}/infos_train_{:02d}sweeps_withvelo_filter_{}.pkl".format(
+                experiment, nsweeps, filter_zero
+            ),
+            "wb",
         ) as f:
             pickle.dump(train_nusc_infos, f)
         with open(
-            root_path / "{}/infos_val_{:02d}sweeps_withvelo_filter_{}.pkl".format(experiment, nsweeps, filter_zero), "wb"
+            root_path
+            / "{}/infos_val_{:02d}sweeps_withvelo_filter_{}.pkl".format(
+                experiment, nsweeps, filter_zero
+            ),
+            "wb",
         ) as f:
             pickle.dump(val_nusc_infos, f)
 
 
-def eval_main(nusc, eval_version, res_path, eval_set, output_dir, forecast, tp_pct, static_only,
-              cohort_analysis, topK, root, association_oracle, nogroup):
+def eval_main(
+    nusc,
+    eval_version,
+    res_path,
+    eval_set,
+    output_dir,
+    forecast,
+    tp_pct,
+    static_only,
+    cohort_analysis,
+    topK,
+    root,
+    association_oracle,
+    nogroup,
+):
     # nusc = NuScenes(version=version, dataroot=str(root_path), verbose=True)
     cfg = config_factory(eval_version)
-    print('here')
+    print("here")
     print(nusc)
     print(cfg)
     print(res_path)
@@ -698,8 +815,8 @@ def eval_main(nusc, eval_version, res_path, eval_set, output_dir, forecast, tp_p
         topK=topK,
         root=root,
         association_oracle=association_oracle,
-        nogroup=nogroup
+        nogroup=nogroup,
     )
-    print('pass')
-    input( )
-    metrics_summary = nusc_eval.main(plot_examples=10,cohort_analysis=cohort_analysis)
+    print("pass")
+    input()
+    metrics_summary = nusc_eval.main(plot_examples=10, cohort_analysis=cohort_analysis)

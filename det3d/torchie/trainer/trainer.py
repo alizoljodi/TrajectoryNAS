@@ -37,14 +37,34 @@ def example_to_device(example, device, non_blocking=False) -> dict:
     example_torch = {}
     float_names = ["voxels"]
     for k, v in example.items():
-        if k in ["anchors", "anchors_mask", "reg_targets", "reg_weights", "labels",
-                 "hm", "anno_box", "ind", "mask", 'cat',
-                 "hm_trajectory", "anno_box_trajectory", "ind_trajectory", "mask_trajectory", 'cat_trajectory',
-                 "hm_forecast", "anno_box_forecast", "ind_forecast", "mask_forecast", 'cat_forecast']:
+        if k in [
+            "anchors",
+            "anchors_mask",
+            "reg_targets",
+            "reg_weights",
+            "labels",
+            "hm",
+            "anno_box",
+            "ind",
+            "mask",
+            "cat",
+            "hm_trajectory",
+            "anno_box_trajectory",
+            "ind_trajectory",
+            "mask_trajectory",
+            "cat_trajectory",
+            "hm_forecast",
+            "anno_box_forecast",
+            "ind_forecast",
+            "mask_forecast",
+            "cat_forecast",
+        ]:
 
             example_torch[k] = []
             for fc in v:
-                example_torch[k].append([res.to(device, non_blocking=non_blocking) for res in fc])
+                example_torch[k].append(
+                    [res.to(device, non_blocking=non_blocking) for res in fc]
+                )
 
         elif k in [
             "voxels",
@@ -60,7 +80,7 @@ def example_to_device(example, device, non_blocking=False) -> dict:
             "gt_boxes_and_cls",
             "gt_boxes_and_cls_trajectory",
             "gt_boxes_and_cls_forecast",
-            "bev_map"
+            "bev_map",
         ]:
             try:
                 example_torch[k] = v.to(device, non_blocking=non_blocking)
@@ -86,11 +106,12 @@ def parse_second_losses(losses):
     for loss_name, loss_value in losses.items():
         if loss_name == "loc_loss_elem":
             try:
-                log_vars[loss_name] = [[[k.item() for k in i] for i in j] for j in loss_value]
+                log_vars[loss_name] = [
+                    [[k.item() for k in i] for i in j] for j in loss_value
+                ]
 
             except:
                 log_vars[loss_name] = [[i.item() for i in j] for j in loss_value]
-
 
         else:
             try:
@@ -153,7 +174,7 @@ class Prefetcher(object):
 
 
 class Trainer(object):
-    """ A training helper for PyTorch
+    """A training helper for PyTorch
 
     Args:
         model:
@@ -165,15 +186,15 @@ class Trainer(object):
     """
 
     def __init__(
-            self,
-            model,
-            batch_processor,
-            optimizer=None,
-            lr_scheduler=None,
-            work_dir=None,
-            log_level=logging.INFO,
-            logger=None,
-            **kwargs,
+        self,
+        model,
+        batch_processor,
+        optimizer=None,
+        lr_scheduler=None,
+        work_dir=None,
+        log_level=logging.INFO,
+        logger=None,
+        **kwargs,
     ):
         assert callable(batch_processor)
         self.model = model
@@ -360,7 +381,7 @@ class Trainer(object):
         return load_checkpoint(self.model, filename, map_location, strict, self.logger)
 
     def save_checkpoint(
-            self, out_dir, filename_tmpl="epoch_{}.pth", save_optimizer=True, meta=None
+        self, out_dir, filename_tmpl="epoch_{}.pth", save_optimizer=True, meta=None
     ):
         if meta is None:
             meta = dict(epoch=self.epoch + 1, iter=self.iter)
@@ -407,18 +428,32 @@ class Trainer(object):
         self.model.train()
 
         if self.cfg.TWO_STAGE:
+
             def freeze_bn(m):
                 classname = m.__class__.__name__
-                if classname.find('BatchNorm2d') != -1 or classname.find('BatchNorm1d') != -1:
+                if (
+                    classname.find("BatchNorm2d") != -1
+                    or classname.find("BatchNorm1d") != -1
+                ):
                     m.eval()
 
             def unfreeze_bn(m):
                 classname = m.__class__.__name__
-                if classname.find('BatchNorm2d') != -1 or classname.find('BatchNorm1d') != -1:
+                if (
+                    classname.find("BatchNorm2d") != -1
+                    or classname.find("BatchNorm1d") != -1
+                ):
                     m.train()
 
             for name, module in self.model.named_modules():
-                if "forecast_conv" not in name and "reverse_conv" not in name and "vel" not in name and "rot" not in name and "rvel" not in name and "rrot" not in name:
+                if (
+                    "forecast_conv" not in name
+                    and "reverse_conv" not in name
+                    and "vel" not in name
+                    and "rot" not in name
+                    and "rvel" not in name
+                    and "rrot" not in name
+                ):
                     module.apply(freeze_bn)
                 else:
                     module.apply(unfreeze_bn)
@@ -490,7 +525,9 @@ class Trainer(object):
                     ]:
                         output[k] = v.to(cpu_device)
                 detections.update(
-                    {token: output, }
+                    {
+                        token: output,
+                    }
                 )
                 if self.rank == 0:
                     for _ in range(self.world_size):
@@ -522,7 +559,10 @@ class Trainer(object):
     def resume(self, checkpoint, resume_optimizer=True, map_location="default"):
         if map_location == "default":
             checkpoint = self.load_checkpoint(
-                checkpoint, map_location='cuda:{}'.format(torch.cuda.current_device())  # TODO: FIX THIS!!
+                checkpoint,
+                map_location="cuda:{}".format(
+                    torch.cuda.current_device()
+                ),  # TODO: FIX THIS!!
             )
         else:
             checkpoint = self.load_checkpoint(checkpoint, map_location=map_location)
@@ -536,7 +576,7 @@ class Trainer(object):
 
     def run(self, data_loaders, workflow, max_epochs, cfg, **kwargs):
         # data_loaders[0].num_workers=0
-        """ Start running.
+        """Start running.
 
         Args:
             data_loaders (list[:obj:`DataLoader`])
@@ -611,7 +651,7 @@ class Trainer(object):
             self.register_hook(logger_hook, priority="VERY_LOW")
 
     def register_training_hooks(
-            self, lr_config, optimizer_config=None, checkpoint_config=None, log_config=None
+        self, lr_config, optimizer_config=None, checkpoint_config=None, log_config=None
     ):
         """Register default hooks for training.
 

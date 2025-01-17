@@ -25,9 +25,11 @@ def generate_trajectory(theta: float) -> torch.Tensor:
 
 
 class Dataset(IterableDataset):
-    """ Implements an infinite dataset of the same input image, agent state vector and ground truth label. """
+    """Implements an infinite dataset of the same input image, agent state vector and ground truth label."""
 
-    def __iter__(self,):
+    def __iter__(
+        self,
+    ):
 
         while True:
             image = torch.zeros((3, 100, 100))
@@ -39,19 +41,21 @@ class Dataset(IterableDataset):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Run CoverNet to make sure it overfits on a single test case.')
-    parser.add_argument('--use_gpu', type=int, help='Whether to use gpu', default=0)
+    parser = argparse.ArgumentParser(
+        description="Run CoverNet to make sure it overfits on a single test case."
+    )
+    parser.add_argument("--use_gpu", type=int, help="Whether to use gpu", default=0)
     args = parser.parse_args()
 
     if args.use_gpu:
-        device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     else:
-        device = torch.device('cpu')
+        device = torch.device("cpu")
 
     dataset = Dataset()
     dataloader = DataLoader(dataset, batch_size=16, num_workers=0)
 
-    backbone = MobileNetBackbone('mobilenet_v2')
+    backbone = MobileNetBackbone("mobilenet_v2")
     model = CoverNet(backbone, num_modes=3, input_shape=(3, 100, 100))
     model = model.to(device)
 
@@ -89,4 +93,3 @@ if __name__ == "__main__":
             break
 
         n_iter += 1
-

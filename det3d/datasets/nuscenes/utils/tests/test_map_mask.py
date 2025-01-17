@@ -12,7 +12,7 @@ from nuscenes.utils.map_mask import MapMask
 
 class TestLoad(unittest.TestCase):
 
-    fixture = 'testmap.png'
+    fixture = "testmap.png"
     foreground = 255
     native_res = 0.1  # Maps defined on a 0.1 meter resolution grid.
     small_number = 0.00001  # Just a small numbers to avoid edge effects.
@@ -90,7 +90,9 @@ class TestLoad(unittest.TestCase):
         # But if we dilate by 1 meters, we are on the dilated mask.
         self.assertTrue(map_mask.is_on_mask(2, 3, dilation=1))  # x direction
         self.assertTrue(map_mask.is_on_mask(3, 2, dilation=1))  # y direction
-        self.assertTrue(map_mask.is_on_mask(2 + np.sqrt(1/2), 2 + np.sqrt(1/2), dilation=1))  # diagonal
+        self.assertTrue(
+            map_mask.is_on_mask(2 + np.sqrt(1 / 2), 2 + np.sqrt(1 / 2), dilation=1)
+        )  # diagonal
 
         # If we dilate by 0.9 meter, it is not enough.
         self.assertFalse(map_mask.is_on_mask(2, 3, dilation=0.9))
@@ -122,5 +124,5 @@ class TestLoad(unittest.TestCase):
         self.assertFalse(map_mask.is_on_mask(2, 4, dilation=1.9))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

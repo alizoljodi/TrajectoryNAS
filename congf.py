@@ -1,24 +1,24 @@
 import itertools
 import logging
 
-#from det3d.utils.config_tool import get_downsample_factor
+# from det3d.utils.config_tool import get_downsample_factor
 
 timesteps = 7
-DOUBLE_FLIP=False
-TWO_STAGE=False
-REVERSE=False
-SPARSE=False
-DENSE=True
-BEV_MAP=False
-FORECAST_FEATS=True
-CLASSIFY=False
-WIDE=False
+DOUBLE_FLIP = False
+TWO_STAGE = False
+REVERSE = False
+SPARSE = False
+DENSE = True
+BEV_MAP = False
+FORECAST_FEATS = True
+CLASSIFY = False
+WIDE = False
 
 sampler_type = "trajectory"
 
 tasks = [
     dict(num_class=1, class_names=["car"]),
-    #dict(num_class=2, class_names=["pedestrian"]),
+    # dict(num_class=2, class_names=["pedestrian"]),
 ]
 
 class_names = list(itertools.chain(*[t["class_names"] for t in tasks]))
@@ -37,9 +37,7 @@ model = dict(
         # type='SimpleVoxel',
         num_input_features=5,
     ),
-    backbone=dict(
-        type="SpMiddleResNetFHD", num_input_features=5, ds_factor=8
-    ),
+    backbone=dict(type="SpMiddleResNetFHD", num_input_features=5, ds_factor=8),
     neck=dict(
         type="RPN",
         layer_nums=[1, 1],
@@ -54,10 +52,16 @@ model = dict(
         type="CenterHead",
         in_channels=sum([256, 256]),
         tasks=tasks,
-        dataset='nuscenes',
+        dataset="nuscenes",
         weight=0.25,
         code_weights=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-        common_heads={'reg': (2, 2), 'height': (1, 2), 'dim':(3, 2), 'rot':(2, 2), 'vel': (2, 2)},
+        common_heads={
+            "reg": (2, 2),
+            "height": (1, 2),
+            "dim": (3, 2),
+            "rot": (2, 2),
+            "vel": (2, 2),
+        },
         share_conv_channel=64,
         dcn_head=False,
         timesteps=timesteps,
@@ -99,7 +103,7 @@ test_cfg = dict(
     pc_range=[-54, -54],
     out_size_factor=get_downsample_factor(model),
     voxel_size=[0.075, 0.075],
-    double_flip=DOUBLE_FLIP
+    double_flip=DOUBLE_FLIP,
 )
 
 # dataset settings
@@ -108,37 +112,39 @@ nsweeps = 20
 data_root = "/media/asghar/media/NUSCENES_DATASET_ROOT/trainval_forecast"
 
 if sampler_type == "standard":
-    sample_group=[
+    sample_group = [
         dict(car=2),
-        #dict(pedestrian=2),
+        # dict(pedestrian=2),
     ]
 else:
-    sample_group=[
+    sample_group = [
         dict(static_car=2),
-        #dict(static_pedestrian=2),
+        # dict(static_pedestrian=2),
         dict(linear_car=4),
-        #dict(linear_pedestrian=2),
+        # dict(linear_pedestrian=2),
         dict(nonlinear_car=6),
-        #dict(nonlinear_pedestrian=4),
+        # dict(nonlinear_pedestrian=4),
     ]
 
 db_sampler = dict(
     type="GT-AUG",
     enable=False,
-    db_info_path= data_root + "/dbinfos_train_20sweeps_withvelo.pkl",
+    db_info_path=data_root + "/dbinfos_train_20sweeps_withvelo.pkl",
     sample_groups=sample_group,
     db_prep_steps=[
         dict(
             filter_by_min_num_points=dict(
                 car=5,
-                #pedestrian=5,
+                # pedestrian=5,
             )
         ),
-        dict(filter_by_difficulty=[-1],),
+        dict(
+            filter_by_difficulty=[-1],
+        ),
     ],
     global_random_rotation_range_per_object=[0, 0],
     rate=1.0,
-    sampler_type=sampler_type
+    sampler_type=sampler_type,
 )
 train_preprocessor = dict(
     mode="train",
@@ -151,18 +157,14 @@ train_preprocessor = dict(
     sampler_type=sampler_type,
 )
 
-val_preprocessor = dict(
-    mode="val",
-    shuffle_points=False,
-    sampler_type=sampler_type
-)
+val_preprocessor = dict(mode="val", shuffle_points=False, sampler_type=sampler_type)
 
 voxel_generator = dict(
     range=[-54, -54, -5.0, 54, 54, 3.0],
     voxel_size=[0.075, 0.075, 0.2],
     max_points_in_voxel=10,
     max_voxel_num=[120000, 160000],
-    double_flip=DOUBLE_FLIP
+    double_flip=DOUBLE_FLIP,
 )
 
 train_pipeline = [
@@ -178,7 +180,7 @@ test_pipeline = [
     dict(type="LoadPointCloudFromFile", dataset=dataset_type),
     dict(type="LoadPointCloudAnnotations", with_bbox=True),
     dict(type="Preprocess", cfg=val_preprocessor),
-	dict(type="DoubleFlip") if DOUBLE_FLIP else dict(type="Empty"),
+    dict(type="DoubleFlip") if DOUBLE_FLIP else dict(type="Empty"),
     dict(type="Voxelization", cfg=voxel_generator),
     dict(type="AssignLabel", cfg=train_cfg["assigner"]),
     dict(type="Reformat", double_flip=DOUBLE_FLIP),
@@ -221,20 +223,22 @@ data = dict(
         nsweeps=nsweeps,
         class_names=class_names,
         pipeline=test_pipeline,
-        version='v1.0-test',
+        version="v1.0-test",
         timesteps=timesteps,
     ),
 )
 
 
-
 optimizer_config = dict(grad_clip=dict(max_norm=35, norm_type=2))
 # optimizer
-optimizer = dict(
-    type="Adam", amsgrad=0.0, weight_decay=0.01)
+optimizer = dict(type="Adam", amsgrad=0.0, weight_decay=0.01)
 # optimizer = dict(    type="Adam", amsgrad=0.0, weight_decay=0.01, fixed_wd=True, moving_average=False,)
 lr_config = dict(
-    type="one_cycle", lr_max=0.001, moms=[0.95, 0.85], div_factor=10.0, pct_start=0.4,
+    type="one_cycle",
+    lr_max=0.001,
+    moms=[0.95, 0.85],
+    div_factor=10.0,
+    pct_start=0.4,
 )
 
 checkpoint_config = dict(interval=1)
@@ -252,7 +256,7 @@ total_epochs = 1
 device_ids = range(8)
 dist_params = dict(backend="nccl", init_method="env://")
 log_level = "INFO"
-work_dir = './models/{}/'.format(__file__[__file__.rfind('/') + 1:-3])
+work_dir = "./models/{}/".format(__file__[__file__.rfind("/") + 1 : -3])
 load_from = None
 resume_from = None
-workflow = [('train', 1)]
+workflow = [("train", 1)]

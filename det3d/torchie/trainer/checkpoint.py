@@ -40,14 +40,13 @@ open_mmlab_model_urls = {
 
 
 def load_state_dict(module, state_dict, strict=False, logger=None):
-    """Load state_dict into a module
-    """
+    """Load state_dict into a module"""
     unexpected_keys = []
     shape_mismatch_pairs = []
 
     own_state = module.state_dict()
     for name, param in state_dict.items():
-        # a hacky fixed to load a new voxelnet 
+        # a hacky fixed to load a new voxelnet
         if name not in own_state:
             unexpected_keys.append(name)
             continue
@@ -94,8 +93,8 @@ def load_state_dict(module, state_dict, strict=False, logger=None):
 
 
 def load_url_dist(url):
-    """ In distributed setting, this function only download checkpoint at
-    local rank 0 """
+    """In distributed setting, this function only download checkpoint at
+    local rank 0"""
     rank, world_size = get_dist_info()
     rank = int(os.environ.get("LOCAL_RANK", rank))
     if rank == 0:

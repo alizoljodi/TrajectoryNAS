@@ -1,7 +1,7 @@
 from datetime import time
 import numpy as np
 import pickle
-import pdb 
+import pdb
 from pathlib import Path
 from functools import reduce
 from typing import List
@@ -22,7 +22,7 @@ try:
 except:
     print("nuScenes devkit not Found!")
 
-import pdb 
+import pdb
 
 general_to_detection = {
     "human.pedestrian.adult": "pedestrian",
@@ -49,6 +49,7 @@ general_to_detection = {
     "movable_object.debris": "ignore",
     "static_object.bicycle_rack": "ignore",
 }
+
 
 def get_sample_data(nusc, sample_data_token: str, selected_anntokens: List[str] = None):
     """
@@ -94,6 +95,7 @@ def get_sample_data(nusc, sample_data_token: str, selected_anntokens: List[str] 
 
     return data_path, box_list, cam_intrinsic
 
+
 def window(iterable, size):
     iters = tee(iterable, size)
     for i in range(1, size):
@@ -102,12 +104,14 @@ def window(iterable, size):
 
     return zip(*iters)
 
+
 def get_time(nusc, src_token, dst_token):
-    time_last = 1e-6 * nusc.get('sample', src_token)["timestamp"]
-    time_first = 1e-6 * nusc.get('sample', dst_token)["timestamp"]
+    time_last = 1e-6 * nusc.get("sample", src_token)["timestamp"]
+    time_first = 1e-6 * nusc.get("sample", dst_token)["timestamp"]
     time_diff = time_first - time_last
 
-    return time_diff 
+    return time_diff
+
 
 def center_distance(gt_box, pred_box) -> float:
     """
@@ -118,16 +122,17 @@ def center_distance(gt_box, pred_box) -> float:
     """
     return np.linalg.norm(np.array(pred_box.center[:2]) - np.array(gt_box.center[:2]))
 
+
 def trajectory(nusc, boxes, time, timesteps=7):
     target = boxes[-1]
-    
+
     static_forecast = deepcopy(boxes[0])
 
     linear_forecast = deepcopy(boxes[0])
     vel = linear_forecast.velocity[:2]
     disp = np.sum(list(map(lambda x: np.array(list(vel) + [0]) * x, time)), axis=0)
     linear_forecast.center = linear_forecast.center + disp
-    
+
     if center_distance(target, static_forecast) < max(target.wlh[0], target.wlh[1]):
         return "static"
 
@@ -137,9 +142,10 @@ def trajectory(nusc, boxes, time, timesteps=7):
     else:
         return "nonlinear"
 
+
 def get_annotations(nusc, annotations, ref_boxes, timesteps):
     forecast_annotations = []
-    forecast_boxes = []   
+    forecast_boxes = []
     forecast_trajectory = []
     sample_tokens = [s["token"] for s in nusc.sample]
 
@@ -148,19 +154,23 @@ def get_annotations(nusc, annotations, ref_boxes, timesteps):
         tracklet_annotation = []
         tracklet_trajectory = []
 
-        token = nusc.sample[sample_tokens.index(annotation["sample_token"])]["data"]["LIDAR_TOP"]
+        token = nusc.sample[sample_tokens.index(annotation["sample_token"])]["data"][
+            "LIDAR_TOP"
+        ]
         sd_record = nusc.get("sample_data", token)
         cs_record = nusc.get("calibrated_sensor", sd_record["calibrated_sensor_token"])
         pose_record = nusc.get("ego_pose", sd_record["ego_pose_token"])
 
         pannotation = annotation
         for i in range(timesteps):
-            box = Box(center = annotation["translation"],
-                      size = ref_box.wlh,
-                      orientation = Quaternion(annotation["rotation"]),
-                      velocity = nusc.box_velocity(annotation["token"]),
-                      name = annotation["category_name"],
-                      token = annotation["token"])
+            box = Box(
+                center=annotation["translation"],
+                size=ref_box.wlh,
+                orientation=Quaternion(annotation["rotation"]),
+                velocity=nusc.box_velocity(annotation["token"]),
+                name=annotation["category_name"],
+                token=annotation["token"],
+            )
 
             box.translate(-np.array(pose_record["translation"]))
             box.rotate(Quaternion(pose_record["rotation"]).inverse)
@@ -171,44 +181,52 @@ def get_annotations(nusc, annotations, ref_boxes, timesteps):
 
             tracklet_box.append(box)
             tracklet_annotation.append(annotation)
-            
+
             next_token = annotation["next"]
             prev_token = pannotation["prev"]
 
             if next_token != "":
                 annotation = nusc.get("sample_annotation", next_token)
-            
+
             if prev_token != "":
                 pannotation = nusc.get("sample_annotation", prev_token)
-        
+
         tokens = [b["sample_token"] for b in tracklet_annotation]
         time = [get_time(nusc, src, dst) for src, dst in window(tokens, 2)]
         tracklet_trajectory = trajectory(nusc, tracklet_box, time, timesteps)
 
         forecast_boxes.append(tracklet_box)
         forecast_annotations.append(tracklet_annotation)
-        forecast_trajectory.append(timesteps*[tracklet_trajectory])
+        forecast_trajectory.append(timesteps * [tracklet_trajectory])
 
     return forecast_boxes, forecast_annotations, forecast_trajectory
 
-nusc = NuScenes(version="v1.0-trainval", dataroot="~/Workspace/Data/nuScenes", verbose=True)
+
+nusc = NuScenes(
+    version="v1.0-trainval", dataroot="~/Workspace/Data/nuScenes", verbose=True
+)
 
 ref_chan = "LIDAR_TOP"  # The radar channel from which we track back n sweeps to aggregate the point cloud.
 chan = "LIDAR_TOP"  # The reference channel of the current sample_rec that the point clouds are mapped to.
 
-trajectories  = {}
+trajectories = {}
 for sample in tqdm(nusc.sample):
-    """ Manual save info["sweeps"] """
+    """Manual save info["sweeps"]"""
     ref_sd_token = sample["data"][ref_chan]
-    #ref_sd_rec = nusc.get("sample_data", ref_sd_token)
-    #ref_cs_rec = nusc.get("calibrated_sensor", ref_sd_rec["calibrated_sensor_token"])
-    #ref_pose_rec = nusc.get("ego_pose", ref_sd_rec["ego_pose_token"])
-    #ref_time = 1e-6 * ref_sd_rec["timestamp"]
+    # ref_sd_rec = nusc.get("sample_data", ref_sd_token)
+    # ref_cs_rec = nusc.get("calibrated_sensor", ref_sd_rec["calibrated_sensor_token"])
+    # ref_pose_rec = nusc.get("ego_pose", ref_sd_rec["ego_pose_token"])
+    # ref_time = 1e-6 * ref_sd_rec["timestamp"]
 
     ref_lidar_path, ref_boxes, _ = get_sample_data(nusc, ref_sd_token)
     annotations = [nusc.get("sample_annotation", token) for token in sample["anns"]]
-    forecast_boxes, forecast_annotations, forecast_trajectory = get_annotations(nusc, annotations, ref_boxes, 7)
-    names = [np.array([general_to_detection[b.name] for b in boxes]) for boxes in forecast_boxes]
+    forecast_boxes, forecast_annotations, forecast_trajectory = get_annotations(
+        nusc, annotations, ref_boxes, 7
+    )
+    names = [
+        np.array([general_to_detection[b.name] for b in boxes])
+        for boxes in forecast_boxes
+    ]
 
     for traj, name in zip(forecast_trajectory, names):
         traj = traj[0]

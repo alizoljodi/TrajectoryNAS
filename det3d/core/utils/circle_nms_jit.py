@@ -1,5 +1,6 @@
-import numba 
-import numpy as np 
+import numba
+import numpy as np
+
 
 @numba.jit(nopython=True)
 def circle_nms(dets, thresh):
@@ -20,7 +21,7 @@ def circle_nms(dets, thresh):
             if suppressed[j] == 1:
                 continue
             # calculate center distance between i and j box
-            dist = (x1[i]-x1[j])**2 + (y1[i]-y1[j])**2
+            dist = (x1[i] - x1[j]) ** 2 + (y1[i] - y1[j]) ** 2
 
             # ovr = inter / areas[j]
             if dist <= thresh:

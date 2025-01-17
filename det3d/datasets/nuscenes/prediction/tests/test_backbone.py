@@ -20,11 +20,11 @@ class TestBackBones(unittest.TestCase):
 
     def test_resnet(self):
 
-        rn_18 = ResNetBackbone('resnet18')
-        rn_34 = ResNetBackbone('resnet34')
-        rn_50 = ResNetBackbone('resnet50')
-        rn_101 = ResNetBackbone('resnet101')
-        rn_152 = ResNetBackbone('resnet152')
+        rn_18 = ResNetBackbone("resnet18")
+        rn_34 = ResNetBackbone("resnet34")
+        rn_50 = ResNetBackbone("resnet50")
+        rn_101 = ResNetBackbone("resnet101")
+        rn_152 = ResNetBackbone("resnet152")
 
         tensor = torch.ones((1, 3, 100, 100))
 
@@ -41,11 +41,11 @@ class TestBackBones(unittest.TestCase):
         self.assertEqual(self.count_layers(list(rn_152.backbone.children())), 152)
 
         with self.assertRaises(ValueError):
-            ResNetBackbone('resnet51')
+            ResNetBackbone("resnet51")
 
     def test_mobilenet(self):
 
-        mobilenet = MobileNetBackbone('mobilenet_v2')
+        mobilenet = MobileNetBackbone("mobilenet_v2")
 
         tensor = torch.ones((1, 3, 100, 100))
 

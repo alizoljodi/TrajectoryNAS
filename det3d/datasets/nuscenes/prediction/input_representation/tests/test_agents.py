@@ -14,19 +14,20 @@ from nuscenes.prediction.input_representation import agents
 
 class Test_get_track_box(unittest.TestCase):
 
-
     def test_heading_positive_30(self):
 
-        annotation = {'translation': [0, 0, 0],
-                      'rotation': [np.cos(np.pi / 12), 0, 0, np.sin(np.pi / 12)],
-                      'size': [4, 2]}
+        annotation = {
+            "translation": [0, 0, 0],
+            "rotation": [np.cos(np.pi / 12), 0, 0, np.sin(np.pi / 12)],
+            "size": [4, 2],
+        }
 
         ego_center = (0, 0)
         ego_pixels = (50, 50)
 
         pi_over_six = np.pi / 6
 
-        box = agents.get_track_box(annotation, ego_center, ego_pixels, resolution=1.)
+        box = agents.get_track_box(annotation, ego_center, ego_pixels, resolution=1.0)
 
         mat = make_2d_rotation_matrix(pi_over_six)
         coordinates = np.array([[-2, 1], [-2, -1], [2, -1], [2, 1]])
@@ -35,19 +36,20 @@ class Test_get_track_box(unittest.TestCase):
 
         np.testing.assert_allclose(np.sort(answer, axis=0), np.sort(box, axis=0))
 
-
     def test_heading_neg_30(self):
 
-        annotation = {'translation': [0, 0, 0],
-                      'rotation': [np.cos(-np.pi / 12), 0, 0, np.sin(-np.pi / 12)],
-                      'size': [4, 2]}
+        annotation = {
+            "translation": [0, 0, 0],
+            "rotation": [np.cos(-np.pi / 12), 0, 0, np.sin(-np.pi / 12)],
+            "size": [4, 2],
+        }
 
         ego_center = (0, 0)
         ego_pixels = (50, 50)
 
         pi_over_six = -np.pi / 6
 
-        box = agents.get_track_box(annotation, ego_center, ego_pixels, resolution=1.)
+        box = agents.get_track_box(annotation, ego_center, ego_pixels, resolution=1.0)
 
         mat = make_2d_rotation_matrix(pi_over_six)
         coordinates = np.array([[-2, 1], [-2, -1], [2, -1], [2, 1]])
@@ -61,15 +63,19 @@ class Test_reverse_history(unittest.TestCase):
 
     def test(self):
 
-        history = {'instance_1': [{'time': 0}, {'time': -1}, {'time': -2}],
-                   'instance_2': [{'time': -1}, {'time': -2}],
-                   'instance_3': [{'time': 0}]}
+        history = {
+            "instance_1": [{"time": 0}, {"time": -1}, {"time": -2}],
+            "instance_2": [{"time": -1}, {"time": -2}],
+            "instance_3": [{"time": 0}],
+        }
 
         agent_history = agents.reverse_history(history)
 
-        answer = {'instance_1': [{'time': -2}, {'time': -1}, {'time': 0}],
-                  'instance_2': [{'time': -2}, {'time': -1}],
-                  'instance_3': [{'time': 0}]}
+        answer = {
+            "instance_1": [{"time": -2}, {"time": -1}, {"time": 0}],
+            "instance_2": [{"time": -2}, {"time": -1}],
+            "instance_3": [{"time": 0}],
+        }
 
         self.assertDictEqual(answer, agent_history)
 
@@ -78,22 +84,28 @@ class Test_add_present_time_to_history(unittest.TestCase):
 
     def test(self):
 
-        current_time = [{'instance_token': 0, 'time': 3},
-                        {'instance_token': 1, 'time': 3},
-                        {'instance_token': 2, 'time': 3}]
+        current_time = [
+            {"instance_token": 0, "time": 3},
+            {"instance_token": 1, "time": 3},
+            {"instance_token": 2, "time": 3},
+        ]
 
-        history = {0: [{'instance_token': 0, 'time': 1},
-                       {'instance_token': 0, 'time': 2}],
-                   1: [{'instance_token': 1, 'time': 2}]}
+        history = {
+            0: [{"instance_token": 0, "time": 1}, {"instance_token": 0, "time": 2}],
+            1: [{"instance_token": 1, "time": 2}],
+        }
 
         history = agents.add_present_time_to_history(current_time, history)
 
-        answer = {0: [{'instance_token': 0, 'time': 1},
-                      {'instance_token': 0, 'time': 2},
-                      {'instance_token': 0, 'time': 3}],
-                  1: [{'instance_token': 1, 'time': 2},
-                      {'instance_token': 1, 'time': 3}],
-                  2: [{'instance_token': 2, 'time': 3}]}
+        answer = {
+            0: [
+                {"instance_token": 0, "time": 1},
+                {"instance_token": 0, "time": 2},
+                {"instance_token": 0, "time": 3},
+            ],
+            1: [{"instance_token": 1, "time": 2}, {"instance_token": 1, "time": 3}],
+            2: [{"instance_token": 2, "time": 3}],
+        }
 
         self.assertDictEqual(answer, history)
 
@@ -117,33 +129,62 @@ class TestAgentBoxesWithFadedHistory(unittest.TestCase):
 
         mock_helper = MagicMock(spec=PredictHelper)
 
-        mock_helper.get_past_for_sample.return_value = {0: [{'rotation': [1, 0, 0, 0], 'translation': [-5, 0, 0],
-                                                             'size': [2, 4, 0], 'instance_token': 0,
-                                                             'category_name': 'vehicle'}],
-                                                        1: [{'rotation': [1, 0, 0, 0], 'translation': [5, -5, 0],
-                                                             'size': [3, 3, 0], 'instance_token': 1,
-                                                             'category_name': 'human'}]}
-        mock_helper.get_annotations_for_sample.return_value = [{'rotation': [1, 0, 0, 0], 'translation': [0, 0, 0],
-                                                   'size': [2, 4, 0], 'instance_token': 0,
-                                                   'category_name': 'vehicle'},
-                                                   {'rotation': [1, 0, 0, 0], 'translation': [10, -5, 0],
-                                                    'size': [3, 3, 0], 'instance_token': 1,
-                                                    'category_name': 'human'}]
+        mock_helper.get_past_for_sample.return_value = {
+            0: [
+                {
+                    "rotation": [1, 0, 0, 0],
+                    "translation": [-5, 0, 0],
+                    "size": [2, 4, 0],
+                    "instance_token": 0,
+                    "category_name": "vehicle",
+                }
+            ],
+            1: [
+                {
+                    "rotation": [1, 0, 0, 0],
+                    "translation": [5, -5, 0],
+                    "size": [3, 3, 0],
+                    "instance_token": 1,
+                    "category_name": "human",
+                }
+            ],
+        }
+        mock_helper.get_annotations_for_sample.return_value = [
+            {
+                "rotation": [1, 0, 0, 0],
+                "translation": [0, 0, 0],
+                "size": [2, 4, 0],
+                "instance_token": 0,
+                "category_name": "vehicle",
+            },
+            {
+                "rotation": [1, 0, 0, 0],
+                "translation": [10, -5, 0],
+                "size": [3, 3, 0],
+                "instance_token": 1,
+                "category_name": "human",
+            },
+        ]
 
-        mock_helper.get_sample_annotation.return_value = {'rotation': [1, 0, 0, 0], 'translation': [0, 0, 0],
-                                                   'size': [2, 4, 0], 'instance_token': 0,
-                                                   'category_name': 'vehicle'}
+        mock_helper.get_sample_annotation.return_value = {
+            "rotation": [1, 0, 0, 0],
+            "translation": [0, 0, 0],
+            "size": [2, 4, 0],
+            "instance_token": 0,
+            "category_name": "vehicle",
+        }
 
         def get_colors(name):
-            if 'vehicle' in name:
+            if "vehicle" in name:
                 return (255, 0, 0)
             else:
                 return (255, 255, 0)
 
-        agent_rasterizer = agents.AgentBoxesWithFadedHistory(mock_helper,
-                                                             color_mapping=get_colors)
+        agent_rasterizer = agents.AgentBoxesWithFadedHistory(
+            mock_helper, color_mapping=get_colors
+        )
 
-        img = agent_rasterizer.make_representation(0, 'foo_sample')
+        img = agent_rasterizer.make_representation(0, "foo_sample")
 
         answer = np.zeros((500, 500, 3))
 

@@ -8,15 +8,17 @@ import matplotlib.pyplot as plt
 Axis = Any
 
 
-def setup_axis(xlabel: str = None,
-               ylabel: str = None,
-               xlim: int = None,
-               ylim: int = None,
-               title: str = None,
-               min_precision: float = None,
-               min_recall: float = None,
-               ax: Axis = None,
-               show_spines: str = 'none'):
+def setup_axis(
+    xlabel: str = None,
+    ylabel: str = None,
+    xlim: int = None,
+    ylim: int = None,
+    title: str = None,
+    min_precision: float = None,
+    min_recall: float = None,
+    ax: Axis = None,
+    show_spines: str = "none",
+):
     """
     Helper method that sets up the axis for a plot.
     :param xlabel: x label text.
@@ -38,14 +40,14 @@ def setup_axis(xlabel: str = None,
     ax.get_yaxis().tick_left()
 
     # Hide the selected axes spines.
-    if show_spines in ['bottomleft', 'none']:
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
+    if show_spines in ["bottomleft", "none"]:
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
 
-        if show_spines == 'none':
-            ax.spines['bottom'].set_visible(False)
-            ax.spines['left'].set_visible(False)
-    elif show_spines in ['all']:
+        if show_spines == "none":
+            ax.spines["bottom"].set_visible(False)
+            ax.spines["left"].set_visible(False)
+    elif show_spines in ["all"]:
         pass
     else:
         raise NotImplementedError
@@ -61,8 +63,8 @@ def setup_axis(xlabel: str = None,
     if ylim is not None:
         ax.set_ylim(0, ylim)
     if min_recall is not None:
-        ax.axvline(x=min_recall, linestyle='--', color=(0, 0, 0, 0.3))
+        ax.axvline(x=min_recall, linestyle="--", color=(0, 0, 0, 0.3))
     if min_precision is not None:
-        ax.axhline(y=min_precision, linestyle='--', color=(0, 0, 0, 0.3))
+        ax.axhline(y=min_precision, linestyle="--", color=(0, 0, 0, 0.3))
 
     return ax

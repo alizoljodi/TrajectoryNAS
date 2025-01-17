@@ -21,5 +21,5 @@ __all__ = [
     "Preprocess",
     "Voxelization",
     "AssignTarget",
-    "AssignLabel"
+    "AssignLabel",
 ]

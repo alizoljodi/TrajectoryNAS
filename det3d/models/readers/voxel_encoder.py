@@ -4,7 +4,6 @@ from torch.nn import functional as F
 from ..registry import READERS
 
 
-
 @READERS.register_module
 class VoxelFeatureExtractorV3(nn.Module):
     def __init__(

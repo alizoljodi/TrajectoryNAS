@@ -17,10 +17,12 @@ from nuscenes.utils.data_classes import Box
 Axis = Any
 
 
-def summary_plot(md_list: TrackingMetricDataList,
-                 min_recall: float,
-                 ncols: int = 2,
-                 savepath: str = None) -> None:
+def summary_plot(
+    md_list: TrackingMetricDataList,
+    min_recall: float,
+    ncols: int = 2,
+    savepath: str = None,
+) -> None:
     """
     Creates a summary plot with which includes all traditional metrics for each class.
     :param md_list: TrackingMetricDataList instance.
@@ -29,7 +31,22 @@ def summary_plot(md_list: TrackingMetricDataList,
     :param savepath: If given, saves the the rendering here instead of displaying.
     """
     # Select metrics and setup plot.
-    rel_metrics = ['motar', 'motp', 'mota', 'recall', 'mt', 'ml', 'faf', 'tp', 'fp', 'fn', 'ids', 'frag', 'tid', 'lgd']
+    rel_metrics = [
+        "motar",
+        "motp",
+        "mota",
+        "recall",
+        "mt",
+        "ml",
+        "faf",
+        "tp",
+        "fp",
+        "fn",
+        "ids",
+        "frag",
+        "tid",
+        "lgd",
+    ]
     n_metrics = len(rel_metrics)
     nrows = int(np.ceil(n_metrics / ncols))
     _, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(7.5 * ncols, 5 * nrows))
@@ -47,11 +64,13 @@ def summary_plot(md_list: TrackingMetricDataList,
         plt.close()
 
 
-def recall_metric_curve(md_list: TrackingMetricDataList,
-                        metric_name: str,
-                        min_recall: float,
-                        savepath: str = None,
-                        ax: Axis = None) -> None:
+def recall_metric_curve(
+    md_list: TrackingMetricDataList,
+    metric_name: str,
+    min_recall: float,
+    savepath: str = None,
+    ax: Axis = None,
+) -> None:
     """
     Plot the recall versus metric curve for the given metric.
     :param md_list: TrackingMetricDataList instance.
@@ -63,8 +82,15 @@ def recall_metric_curve(md_list: TrackingMetricDataList,
     # Setup plot.
     if ax is None:
         _, ax = plt.subplots(1, 1, figsize=(7.5, 5))
-    ax = setup_axis(xlabel='Recall', ylabel=metric_name.upper(),
-                    xlim=1, ylim=None, min_recall=min_recall, ax=ax, show_spines='bottomleft')
+    ax = setup_axis(
+        xlabel="Recall",
+        ylabel=metric_name.upper(),
+        xlim=1,
+        ylim=None,
+        min_recall=min_recall,
+        ax=ax,
+        show_spines="bottomleft",
+    )
 
     # Plot the recall vs. precision curve for each detection class.
     for tracking_name, md in md_list.md.items():
@@ -82,23 +108,25 @@ def recall_metric_curve(md_list: TrackingMetricDataList,
         recalls = recalls[first_valid:]
         values = values[first_valid:]
 
-        ax.plot(recalls,
-                values,
-                label='%s' % PRETTY_TRACKING_NAMES[tracking_name],
-                color=TRACKING_COLORS[tracking_name])
+        ax.plot(
+            recalls,
+            values,
+            label="%s" % PRETTY_TRACKING_NAMES[tracking_name],
+            color=TRACKING_COLORS[tracking_name],
+        )
 
     # Scale count statistics and FAF logarithmically.
-    if metric_name in ['mt', 'ml', 'faf', 'tp', 'fp', 'fn', 'ids', 'frag']:
-        ax.set_yscale('symlog')
+    if metric_name in ["mt", "ml", "faf", "tp", "fp", "fn", "ids", "frag"]:
+        ax.set_yscale("symlog")
 
-    if metric_name in ['amota', 'motar', 'recall', 'mota']:
+    if metric_name in ["amota", "motar", "recall", "mota"]:
         # Some metrics have an upper bound of 1.
         ax.set_ylim(0, 1)
-    elif metric_name != 'motp':
+    elif metric_name != "motp":
         # For all other metrics except MOTP we set a lower bound of 0.
         ax.set_ylim(bottom=0)
 
-    ax.legend(loc='upper right', borderaxespad=0)
+    ax.legend(loc="upper right", borderaxespad=0)
     plt.tight_layout()
     if savepath is not None:
         plt.savefig(savepath)
@@ -109,6 +137,7 @@ class TrackingRenderer:
     """
     Class that renders the tracking results in BEV and saves them to a folder.
     """
+
     def __init__(self, save_path):
         """
         :param save_path:  Output path to save the renderings.
@@ -116,8 +145,13 @@ class TrackingRenderer:
         self.save_path = save_path
         self.id2color = {}  # The color of each track.
 
-    def render(self, events: DataFrame, timestamp: int, frame_gt: List[TrackingBox], frame_pred: List[TrackingBox]) \
-            -> None:
+    def render(
+        self,
+        events: DataFrame,
+        timestamp: int,
+        frame_gt: List[TrackingBox],
+        frame_pred: List[TrackingBox],
+    ) -> None:
         """
         Render function for a given scene timestamp
         :param events: motmetrics events for that particular
@@ -126,40 +160,54 @@ class TrackingRenderer:
         :param frame_pred: list of prediction boxes
         """
         # Init.
-        print('Rendering {}'.format(timestamp))
-        switches = events[events.Type == 'SWITCH']
+        print("Rendering {}".format(timestamp))
+        switches = events[events.Type == "SWITCH"]
         switch_ids = switches.HId.values
         fig, ax = plt.subplots()
 
         # Plot GT boxes.
         for b in frame_gt:
-            color = 'k'
-            box = Box(b.ego_translation, b.size, Quaternion(b.rotation), name=b.tracking_name, token=b.tracking_id)
+            color = "k"
+            box = Box(
+                b.ego_translation,
+                b.size,
+                Quaternion(b.rotation),
+                name=b.tracking_name,
+                token=b.tracking_id,
+            )
             box.render(ax, view=np.eye(4), colors=(color, color, color), linewidth=1)
 
         # Plot predicted boxes.
         for b in frame_pred:
-            box = Box(b.ego_translation, b.size, Quaternion(b.rotation), name=b.tracking_name, token=b.tracking_id)
+            box = Box(
+                b.ego_translation,
+                b.size,
+                Quaternion(b.rotation),
+                name=b.tracking_name,
+                token=b.tracking_id,
+            )
 
             # Determine color for this tracking id.
             if b.tracking_id not in self.id2color.keys():
-                self.id2color[b.tracking_id] = (float(hash(b.tracking_id + 'r') % 256) / 255,
-                                                float(hash(b.tracking_id + 'g') % 256) / 255,
-                                                float(hash(b.tracking_id + 'b') % 256) / 255)
+                self.id2color[b.tracking_id] = (
+                    float(hash(b.tracking_id + "r") % 256) / 255,
+                    float(hash(b.tracking_id + "g") % 256) / 255,
+                    float(hash(b.tracking_id + "b") % 256) / 255,
+                )
 
             # Render box. Highlight identity switches in red.
             if b.tracking_id in switch_ids:
                 color = self.id2color[b.tracking_id]
-                box.render(ax, view=np.eye(4), colors=('r', 'r', color))
+                box.render(ax, view=np.eye(4), colors=("r", "r", color))
             else:
                 color = self.id2color[b.tracking_id]
                 box.render(ax, view=np.eye(4), colors=(color, color, color))
 
         # Plot ego pose.
-        plt.scatter(0, 0, s=96, facecolors='none', edgecolors='k', marker='o')
+        plt.scatter(0, 0, s=96, facecolors="none", edgecolors="k", marker="o")
         plt.xlim(-50, 50)
         plt.ylim(-50, 50)
 
         # Save to disk and close figure.
-        fig.savefig(os.path.join(self.save_path, '{}.png'.format(timestamp)))
+        fig.savefig(os.path.join(self.save_path, "{}.png".format(timestamp)))
         plt.close(fig)

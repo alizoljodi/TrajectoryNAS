@@ -26,7 +26,7 @@ class Registry(object):
     def get(self, key):
         print(self._module_dict)
         print(key)
-        #sys.exit()
+        # sys.exit()
         return self._module_dict.get(key, None)
 
     def _register_module(self, module_class):
@@ -50,7 +50,7 @@ class Registry(object):
         return cls
 
 
-def build_from_cfg(cfg, registry, default_args=None,structure=None):
+def build_from_cfg(cfg, registry, default_args=None, structure=None):
     print(structure)
     """Build a module from config dict.
     Args:
@@ -65,28 +65,28 @@ def build_from_cfg(cfg, registry, default_args=None,structure=None):
     args = cfg.copy()
     obj_type = args.pop("type")
     if torchie.is_str(obj_type):
-        print('1')
+        print("1")
         print(obj_type)
-        #sys.exit()
+        # sys.exit()
         obj_cls = registry.get(obj_type)
-        #print(self._module_dict)
+        # print(self._module_dict)
         print(obj_cls)
-        #sys.exit()
+        # sys.exit()
         if obj_cls is None:
             raise KeyError(
                 "{} is not in the {} registry".format(obj_type, registry.name)
             )
     elif inspect.isclass(obj_type):
-        print('2')
+        print("2")
         obj_cls = obj_type
     else:
-        print('3')
+        print("3")
         raise TypeError(
             "type must be a str or valid type, but got {}".format(type(obj_type))
         )
     if default_args is not None:
-        print('4')
-        #print(default_args)
+        print("4")
+        # print(default_args)
         for name, value in default_args.items():
             args.setdefault(name, value)
     print(structure)

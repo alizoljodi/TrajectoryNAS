@@ -15,14 +15,16 @@ from nuscenes.prediction import PredictHelper
 from nuscenes.prediction.models.physics import ConstantVelocityHeading
 
 
-def load_model(helper: PredictHelper, config: PredictionConfig, path_to_model_weights: str) -> Any:
-    """ Loads model with desired weights. """
+def load_model(
+    helper: PredictHelper, config: PredictionConfig, path_to_model_weights: str
+) -> Any:
+    """Loads model with desired weights."""
     return ConstantVelocityHeading(config.seconds, helper)
 
 
-def do_inference_for_submission(helper: PredictHelper,
-                                config: PredictionConfig,
-                                dataset_tokens: List[str]) -> List[Prediction]:
+def do_inference_for_submission(
+    helper: PredictHelper, config: PredictionConfig, dataset_tokens: List[str]
+) -> List[Prediction]:
     """
     Currently, this will make a submission with a constant velocity and heading model.
     Fill in all the code needed to run your model on the test set here. You do not need to worry
@@ -46,8 +48,14 @@ def do_inference_for_submission(helper: PredictHelper,
     return cv_preds
 
 
-def main(version: str, data_root: str, split_name: str, output_dir: str, submission_name: str, config_name: str) \
-        -> None:
+def main(
+    version: str,
+    data_root: str,
+    split_name: str,
+    output_dir: str,
+    submission_name: str,
+    config_name: str,
+) -> None:
     """
     Makes predictions for a submission to the nuScenes prediction challenge.
     :param version: NuScenes version.
@@ -64,18 +72,36 @@ def main(version: str, data_root: str, split_name: str, output_dir: str, submiss
 
     predictions = do_inference_for_submission(helper, config, dataset)
     predictions = [prediction.serialize() for prediction in predictions]
-    json.dump(predictions, open(os.path.join(output_dir, f"{submission_name}_inference.json"), "w"))
+    json.dump(
+        predictions,
+        open(os.path.join(output_dir, f"{submission_name}_inference.json"), "w"),
+    )
 
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Perform Inference with baseline models.')
-    parser.add_argument('--version', help='NuScenes version number.')
-    parser.add_argument('--data_root', help='Root directory for NuScenes json files.')
-    parser.add_argument('--split_name', help='Data split to run inference on.')
-    parser.add_argument('--output_dir', help='Directory to store output file.')
-    parser.add_argument('--submission_name', help='Name of the submission to use for the results file.')
-    parser.add_argument('--config_name', help='Name of the config file to use', default='predict_2020_icra.json')
+    parser = argparse.ArgumentParser(
+        description="Perform Inference with baseline models."
+    )
+    parser.add_argument("--version", help="NuScenes version number.")
+    parser.add_argument("--data_root", help="Root directory for NuScenes json files.")
+    parser.add_argument("--split_name", help="Data split to run inference on.")
+    parser.add_argument("--output_dir", help="Directory to store output file.")
+    parser.add_argument(
+        "--submission_name", help="Name of the submission to use for the results file."
+    )
+    parser.add_argument(
+        "--config_name",
+        help="Name of the config file to use",
+        default="predict_2020_icra.json",
+    )
 
     args = parser.parse_args()
-    main(args.version, args.data_root, args.split_name, args.output_dir, args.submission_name, args.config_name)
+    main(
+        args.version,
+        args.data_root,
+        args.split_name,
+        args.output_dir,
+        args.submission_name,
+        args.config_name,
+    )

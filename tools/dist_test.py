@@ -5,8 +5,8 @@ import json
 import os
 import sys
 
-sys.path.append('/media/asghar/media/FutureDet-NAS')
-sys.path.append('/media/asghar/media/FutureDet-NAS/Core/nuscenes-forecast/python-sdk')
+sys.path.append("/media/asghar/media/FutureDet-NAS")
+sys.path.append("/media/asghar/media/FutureDet-NAS/Core/nuscenes-forecast/python-sdk")
 
 try:
     import apex
@@ -30,30 +30,40 @@ from det3d.torchie.apis import (
 from det3d.torchie.trainer import get_dist_info, load_checkpoint
 from det3d.torchie.trainer.utils import all_gather, synchronize
 from torch.nn.parallel import DistributedDataParallel
-import pickle 
-import time 
+import pickle
+import time
 
 from det3d.datasets.nuscenes.nuscenes import NuScenes
 
-import pdb 
+import pdb
+
 
 def save_pred(pred, root, split, modelCheckPoint):
-    with open(os.path.join(root, "prediction_{}_{}.pkl".format(split, modelCheckPoint)), "wb") as f:
+    with open(
+        os.path.join(root, "prediction_{}_{}.pkl".format(split, modelCheckPoint)), "wb"
+    ) as f:
         pickle.dump(pred, f)
 
+
 def load_pred(root, split, modelCheckPoint):
-    with open(os.path.join(root, "prediction_{}_{}.pkl".format(split, modelCheckPoint)), "rb") as f:
+    with open(
+        os.path.join(root, "prediction_{}_{}.pkl".format(split, modelCheckPoint)), "rb"
+    ) as f:
         pred = pickle.load(f)
-        return pred 
+        return pred
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train a detector")
     parser.add_argument("config", help="train config file path")
-    parser.add_argument("--work_dir", required=True, help="the dir to save logs and models")
+    parser.add_argument(
+        "--work_dir", required=True, help="the dir to save logs and models"
+    )
     parser.add_argument(
         "--checkpoint", help="the dir to checkpoint which the model read from"
     )
-    parser.add_argument("--root", default="/media/asghar/media/NUSCENES_DATASET_ROOT_MINI"
+    parser.add_argument(
+        "--root", default="/media/asghar/media/NUSCENES_DATASET_ROOT_MINI"
     )
     parser.add_argument(
         "--txt_result",
@@ -76,7 +86,7 @@ def parse_args():
     parser.add_argument("--speed_test", action="store_true")
     parser.add_argument("--local_rank", type=int, default=0)
     parser.add_argument("--testset", action="store_true")
-    parser.add_argument("--extractBox", action="store_true",default=True)
+    parser.add_argument("--extractBox", action="store_true", default=True)
     parser.add_argument("--forecast", type=int, default=6)
     parser.add_argument("--forecast_mode", default="velocity_forward")
     parser.add_argument("--classname", default="car")
@@ -104,7 +114,7 @@ def parse_args():
 
     return args
 
-    
+
 def main():
 
     # torch.manual_seed(0)
@@ -148,8 +158,14 @@ def main():
             dataset = build_dataset(cfg.data.val)
         else:
             print("Use Train Set")
-            cfg.data.val.info_path = cfg.data.val.info_path.replace("infos_val_10sweeps_withvelo_filter_True", "infos_train_10sweeps_withvelo_filter_True")
-            cfg.data.val.ann_file = cfg.data.val.info_path.replace("infos_val_10sweeps_withvelo_filter_True", "infos_train_10sweeps_withvelo_filter_True")
+            cfg.data.val.info_path = cfg.data.val.info_path.replace(
+                "infos_val_10sweeps_withvelo_filter_True",
+                "infos_train_10sweeps_withvelo_filter_True",
+            )
+            cfg.data.val.ann_file = cfg.data.val.info_path.replace(
+                "infos_val_10sweeps_withvelo_filter_True",
+                "infos_train_10sweeps_withvelo_filter_True",
+            )
             dataset = build_dataset(cfg.data.val)
 
     if args.extractBox:
@@ -173,7 +189,7 @@ def main():
             shuffle=False,
         )
 
-        #checkpoint = load_checkpoint(model, args.checkpoint, map_location="cpu")
+        # checkpoint = load_checkpoint(model, args.checkpoint, map_location="cpu")
 
         # put model on gpus
         if distributed:
@@ -201,10 +217,10 @@ def main():
         start = time.time()
 
         start = int(len(dataset) / 3)
-        end = int(len(dataset) * 2 /3)
+        end = int(len(dataset) * 2 / 3)
 
-        time_start = 0 
-        time_end = 0 
+        time_start = 0
+        time_end = 0
 
         for i, data_batch in enumerate(data_loader):
             if i == start:
@@ -217,7 +233,10 @@ def main():
 
             with torch.no_grad():
                 outputs = batch_processor(
-                    model, data_batch, train_mode=False, local_rank=args.local_rank,
+                    model,
+                    data_batch,
+                    train_mode=False,
+                    local_rank=args.local_rank,
                 )
             for output in outputs:
                 token = output["metadata"]["token"]
@@ -227,7 +246,9 @@ def main():
                     ]:
                         output[k] = v.to(cpu_device)
                 detections.update(
-                    {token: output,}
+                    {
+                        token: output,
+                    }
                 )
                 if args.local_rank == 0:
                     prog_bar.update()
@@ -235,8 +256,8 @@ def main():
         synchronize()
 
         all_predictions = all_gather(detections)
-        
-        print("\n Total time per frame: ", (time_end -  time_start) / (end - start))
+
+        print("\n Total time per frame: ", (time_end - time_start) / (end - start))
 
         if args.local_rank != 0:
             return
@@ -247,17 +268,35 @@ def main():
 
         if not os.path.exists(args.work_dir):
             os.makedirs(args.work_dir)
-        
+
         save_pred(predictions, args.work_dir, args.split, args.modelCheckPoint)
 
     if args.local_rank != 0:
         return
-    
+
     predictions = load_pred(args.work_dir, args.split, args.modelCheckPoint)
-    result_dict, _ = dataset.evaluation(copy.deepcopy(predictions), output_dir=args.work_dir, testset=args.testset, forecast=args.forecast, forecast_mode=args.forecast_mode, classname=args.classname,
-                                        rerank=args.rerank, tp_pct=args.tp_pct, root=args.root, static_only=args.static_only, cohort_analysis=args.cohort_analysis,
-                                        K=args.K, C=args.C, split=args.split, version=args.version, eval_only=args.eval_only, jitter=args.jitter, 
-                                        association_oracle=args.association_oracle, postprocess=args.postprocess, nogroup=args.nogroup)
+    result_dict, _ = dataset.evaluation(
+        copy.deepcopy(predictions),
+        output_dir=args.work_dir,
+        testset=args.testset,
+        forecast=args.forecast,
+        forecast_mode=args.forecast_mode,
+        classname=args.classname,
+        rerank=args.rerank,
+        tp_pct=args.tp_pct,
+        root=args.root,
+        static_only=args.static_only,
+        cohort_analysis=args.cohort_analysis,
+        K=args.K,
+        C=args.C,
+        split=args.split,
+        version=args.version,
+        eval_only=args.eval_only,
+        jitter=args.jitter,
+        association_oracle=args.association_oracle,
+        postprocess=args.postprocess,
+        nogroup=args.nogroup,
+    )
 
     if result_dict is not None:
         for k, v in result_dict["results"].items():
@@ -265,6 +304,7 @@ def main():
 
     if args.txt_result:
         assert False, "No longer support kitti"
+
 
 if __name__ == "__main__":
     main()

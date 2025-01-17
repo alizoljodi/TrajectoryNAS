@@ -11,22 +11,24 @@ from .registry import (
     NECKS,
     READERS,
     SECOND_STAGE,
-    ROI_HEAD
+    ROI_HEAD,
 )
 
 
-def build(cfg, registry, default_args=None,structure=None):
+def build(cfg, registry, default_args=None, structure=None):
 
     if isinstance(cfg, list):
         modules = [build_from_cfg(cfg_, registry, default_args) for cfg_ in cfg]
         return nn.Sequential(*modules)
     else:
         print(registry)
-        #sys.exit()
-        return build_from_cfg(cfg, registry, default_args,structure=structure)
+        # sys.exit()
+        return build_from_cfg(cfg, registry, default_args, structure=structure)
+
 
 def build_second_stage_module(cfg):
     return build(cfg, SECOND_STAGE)
+
 
 def build_roi_head(cfg):
     return build(cfg, ROI_HEAD)
@@ -43,6 +45,7 @@ def build_backbone(cfg):
 def build_neck(cfg):
     return build(cfg, NECKS)
 
+
 def build_head(cfg):
     return build(cfg, HEADS)
 
@@ -51,7 +54,12 @@ def build_loss(cfg):
     return build(cfg, LOSSES)
 
 
-def build_detector(cfg, train_cfg=None, test_cfg=None,structure=None):
+def build_detector(cfg, train_cfg=None, test_cfg=None, structure=None):
     print(structure)
-    #sys.exit()
-    return build(cfg, DETECTORS, dict(train_cfg=train_cfg, test_cfg=test_cfg),structure=structure)
+    # sys.exit()
+    return build(
+        cfg,
+        DETECTORS,
+        dict(train_cfg=train_cfg, test_cfg=test_cfg),
+        structure=structure,
+    )

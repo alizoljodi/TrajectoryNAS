@@ -8,10 +8,12 @@ import numpy as np
 from nuscenes.prediction.helper import angle_of_rotation
 
 
-def convert_to_pixel_coords(location: Tuple[float, float],
-                            center_of_image_in_global: Tuple[float, float],
-                            center_of_image_in_pixels: Tuple[float, float],
-                            resolution: float = 0.1) -> Tuple[int, int]:
+def convert_to_pixel_coords(
+    location: Tuple[float, float],
+    center_of_image_in_global: Tuple[float, float],
+    center_of_image_in_pixels: Tuple[float, float],
+    resolution: float = 0.1,
+) -> Tuple[int, int]:
     """
     Convert from global coordinates to pixel coordinates.
     :param location: Location in global coordinates as (x, y) tuple.
@@ -21,8 +23,8 @@ def convert_to_pixel_coords(location: Tuple[float, float],
     """
 
     x, y = location
-    x_offset = (x - center_of_image_in_global[0])
-    y_offset = (y - center_of_image_in_global[1])
+    x_offset = x - center_of_image_in_global[0]
+    y_offset = y - center_of_image_in_global[1]
 
     x_pixel = x_offset / resolution
 
@@ -35,10 +37,14 @@ def convert_to_pixel_coords(location: Tuple[float, float],
     return row_pixel, column_pixel
 
 
-def get_crops(meters_ahead: float, meters_behind: float,
-              meters_left: float, meters_right: float,
-              resolution: float,
-              image_side_length_pixels: int) -> Tuple[slice, slice]:
+def get_crops(
+    meters_ahead: float,
+    meters_behind: float,
+    meters_left: float,
+    meters_right: float,
+    resolution: float,
+    image_side_length_pixels: int,
+) -> Tuple[slice, slice]:
     """
     Crop the excess pixels and centers the agent at the (meters_ahead, meters_left)
     coordinate in the image.
@@ -52,13 +58,17 @@ def get_crops(meters_ahead: float, meters_behind: float,
     """
 
     row_crop = slice(0, int((meters_ahead + meters_behind) / resolution))
-    col_crop = slice(int(image_side_length_pixels / 2 - (meters_left / resolution)),
-                     int(image_side_length_pixels / 2 + (meters_right / resolution)))
+    col_crop = slice(
+        int(image_side_length_pixels / 2 - (meters_left / resolution)),
+        int(image_side_length_pixels / 2 + (meters_right / resolution)),
+    )
 
     return row_crop, col_crop
 
 
-def get_rotation_matrix(image_shape: Tuple[int, int, int], yaw_in_radians: float) -> np.ndarray:
+def get_rotation_matrix(
+    image_shape: Tuple[int, int, int], yaw_in_radians: float
+) -> np.ndarray:
     """
     Gets a rotation matrix to rotate a three channel image so that
     yaw_in_radians points along the positive y-axis.
@@ -70,4 +80,6 @@ def get_rotation_matrix(image_shape: Tuple[int, int, int], yaw_in_radians: float
 
     rotation_in_degrees = angle_of_rotation(yaw_in_radians) * 180 / np.pi
 
-    return cv2.getRotationMatrix2D((image_shape[1] / 2, image_shape[0] / 2), rotation_in_degrees, 1)
+    return cv2.getRotationMatrix2D(
+        (image_shape[1] / 2, image_shape[0] / 2), rotation_in_degrees, 1
+    )

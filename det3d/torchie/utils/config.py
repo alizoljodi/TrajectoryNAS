@@ -101,8 +101,7 @@ class Config(object):
 
     @staticmethod
     def auto_argparser(description=None):
-        """Generate argparser from config file automatically (experimental)
-        """
+        """Generate argparser from config file automatically (experimental)"""
         partial_parser = ArgumentParser(description=description)
         partial_parser.add_argument("config", help="config file path")
         cfg_file = partial_parser.parse_known_args()[0].config

@@ -16,6 +16,7 @@ from det3d.core.bbox.geometry import (
 import copy
 import pdb
 
+
 class BatchSampler:
     def __init__(
         self, sampled_list, name=None, epoch=None, shuffle=True, drop_reminder=False
@@ -478,7 +479,7 @@ def group_transform_(loc_noise, rot_noise, locs, rots, group_center, valid_mask)
         if valid_mask[i]:
             x = locs[i, 0] - group_center[i, 0]
             y = locs[i, 1] - group_center[i, 1]
-            r = np.sqrt(x ** 2 + y ** 2)
+            r = np.sqrt(x**2 + y**2)
             # calculate rots related to group center
             rot_center = np.arctan2(x, y)
             for j in range(num_try):
@@ -506,7 +507,7 @@ def group_transform_v2_(
         if valid_mask[i]:
             x = locs[i, 0] - group_center[i, 0]
             y = locs[i, 1] - group_center[i, 1]
-            r = np.sqrt(x ** 2 + y ** 2)
+            r = np.sqrt(x**2 + y**2)
             # calculate rots related to group center
             rot_center = np.arctan2(x, y)
             for j in range(num_try):
@@ -776,12 +777,16 @@ def global_scaling(gt_boxes, points, scale=0.05):
 def global_rotation(gt_boxes, points, rotation=np.pi / 4):
     if not isinstance(rotation, list):
         rotation = [-rotation, rotation]
-    
+
     noise_rotation = np.random.uniform(rotation[0], rotation[1])
 
-    points[:, :3] = box_np_ops.rotation_points_single_angle(points[:, :3], noise_rotation, axis=2)
+    points[:, :3] = box_np_ops.rotation_points_single_angle(
+        points[:, :3], noise_rotation, axis=2
+    )
     for i in range(len(gt_boxes)):
-        gt_boxes[i][:, :3] = box_np_ops.rotation_points_single_angle(gt_boxes[i][:, :3], noise_rotation, axis=2)
+        gt_boxes[i][:, :3] = box_np_ops.rotation_points_single_angle(
+            gt_boxes[i][:, :3], noise_rotation, axis=2
+        )
         if gt_boxes[i].shape[1] > 7:
             gt_boxes[i][:, 6:8] = box_np_ops.rotation_points_single_angle(
                 np.hstack([gt_boxes[i][:, 6:8], np.zeros((gt_boxes[i].shape[0], 1))]),
@@ -812,8 +817,9 @@ def random_flip(gt_boxes, points, probability=0.5):
             gt_boxes[:, 7] = -gt_boxes[:, 7]
     return gt_boxes, points
 
+
 def random_flip_both(gt_boxes, points, probability=0.5, flip_coor=None):
-    # x flip 
+    # x flip
     ret_flips = []
     enable = np.random.choice(
         [False, True], replace=False, p=[1 - probability, probability]
@@ -825,12 +831,12 @@ def random_flip_both(gt_boxes, points, probability=0.5, flip_coor=None):
             gt_boxes[i][:, 1] = -gt_boxes[i][:, 1]
             gt_boxes[i][:, -2] = -gt_boxes[i][:, -2] + np.pi
             gt_boxes[i][:, -1] = -gt_boxes[i][:, -1] + np.pi
-            
+
             if gt_boxes[i].shape[1] > 7:  # y axis: x, y, z, w, h, l, vx, vy, r
                 gt_boxes[i][:, 7] = -gt_boxes[i][:, 7]
                 gt_boxes[i][:, 9] = -gt_boxes[i][:, 9]
     ret_flips.append(enable)
-    # y flip 
+    # y flip
     enable = np.random.choice(
         [False, True], replace=False, p=[1 - probability, probability]
     )
@@ -846,9 +852,9 @@ def random_flip_both(gt_boxes, points, probability=0.5, flip_coor=None):
             else:
                 gt_boxes[i][:, 0] = flip_coor * 2 - gt_boxes[i][:, 0]
 
-            gt_boxes[i][:, -2] = -gt_boxes[i][:, -2] + 2 * np.pi  # TODO: CHECK THIS 
-            gt_boxes[i][:, -1] = -gt_boxes[i][:, -1] + 2 * np.pi  # TODO: CHECK THIS 
-            
+            gt_boxes[i][:, -2] = -gt_boxes[i][:, -2] + 2 * np.pi  # TODO: CHECK THIS
+            gt_boxes[i][:, -1] = -gt_boxes[i][:, -1] + 2 * np.pi  # TODO: CHECK THIS
+
             if gt_boxes[i].shape[1] > 7:  # y axis: x, y, z, w, h, l, vx, vy, r
                 gt_boxes[i][:, 6] = -gt_boxes[i][:, 6]
                 gt_boxes[i][:, 8] = -gt_boxes[i][:, 8]
@@ -863,15 +869,19 @@ def global_scaling_v2(gt_boxes, points, min_scale=0.95, max_scale=1.05):
 
     for i in range(len(gt_boxes)):
         gt_boxes[i][:, :-2] *= noise_scale
-        #gt_boxes[i][:, :-1] *= noise_scale
+        # gt_boxes[i][:, :-1] *= noise_scale
 
     return gt_boxes, points, noise_scale
 
 
 def global_rotation_v2(gt_boxes, points, min_rad=-np.pi / 4, max_rad=np.pi / 4):
     noise_rotation = np.random.uniform(min_rad, max_rad)
-    points[:, :3] = box_np_ops.rotation_points_single_angle(points[:, :3], noise_rotation, axis=2)
-    gt_boxes[:, :3] = box_np_ops.rotation_points_single_angle(gt_boxes[:, :3], noise_rotation, axis=2)
+    points[:, :3] = box_np_ops.rotation_points_single_angle(
+        points[:, :3], noise_rotation, axis=2
+    )
+    gt_boxes[:, :3] = box_np_ops.rotation_points_single_angle(
+        gt_boxes[:, :3], noise_rotation, axis=2
+    )
     gt_boxes[:, -2] += noise_rotation
     gt_boxes[:, -1] += noise_rotation
 

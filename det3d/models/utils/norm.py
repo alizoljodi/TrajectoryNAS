@@ -65,7 +65,7 @@ norm_cfg = {
 
 
 def build_norm_layer(cfg, num_features, postfix=""):
-    """ Build normalization layer
+    """Build normalization layer
     Args:
         cfg (dict): cfg should contain:
             type (str): identify norm layer type.

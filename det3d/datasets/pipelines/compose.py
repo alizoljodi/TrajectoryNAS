@@ -11,8 +11,8 @@ class Compose(object):
         self.transforms = []
         for transform in transforms:
             if isinstance(transform, dict):
-                if transform['type'] == 'Empty':
-                    continue 
+                if transform["type"] == "Empty":
+                    continue
                 transform = build_from_cfg(transform, PIPELINES)
                 self.transforms.append(transform)
             elif callable(transform):
@@ -34,4 +34,3 @@ class Compose(object):
             format_string += "    {0}".format(t)
         format_string += "\n)"
         return format_string
-

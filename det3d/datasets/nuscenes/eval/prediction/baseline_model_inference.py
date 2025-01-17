@@ -14,8 +14,13 @@ from nuscenes.prediction import PredictHelper
 from nuscenes.prediction.models.physics import ConstantVelocityHeading, PhysicsOracle
 
 
-def main(version: str, data_root: str,
-         split_name: str, output_dir: str, config_name: str = 'predict_2020_icra.json') -> None:
+def main(
+    version: str,
+    data_root: str,
+    split_name: str,
+    output_dir: str,
+    config_name: str = "predict_2020_icra.json",
+) -> None:
     """
     Performs inference for all of the baseline models defined in the physics model module.
     :param version: nuScenes data set version.
@@ -44,12 +49,22 @@ def main(version: str, data_root: str,
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Perform Inference with baseline models.')
-    parser.add_argument('--version', help='nuScenes version number.')
-    parser.add_argument('--data_root', help='Directory storing NuScenes data.', default='/data/sets/nuscenes')
-    parser.add_argument('--split_name', help='Data split to run inference on.')
-    parser.add_argument('--output_dir', help='Directory to store output files.')
-    parser.add_argument('--config_name', help='Config file to use.', default='predict_2020_icra.json')
+    parser = argparse.ArgumentParser(
+        description="Perform Inference with baseline models."
+    )
+    parser.add_argument("--version", help="nuScenes version number.")
+    parser.add_argument(
+        "--data_root",
+        help="Directory storing NuScenes data.",
+        default="/data/sets/nuscenes",
+    )
+    parser.add_argument("--split_name", help="Data split to run inference on.")
+    parser.add_argument("--output_dir", help="Directory to store output files.")
+    parser.add_argument(
+        "--config_name", help="Config file to use.", default="predict_2020_icra.json"
+    )
 
     args = parser.parse_args()
-    main(args.version, args.data_root, args.split_name, args.output_dir, args.config_name)
+    main(
+        args.version, args.data_root, args.split_name, args.output_dir, args.config_name
+    )

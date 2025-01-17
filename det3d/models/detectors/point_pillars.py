@@ -1,6 +1,7 @@
 from ..registry import DETECTORS
 from .single_stage import SingleStageDetector
-from copy import deepcopy 
+from copy import deepcopy
+
 
 @DETECTORS.register_module
 class PointPillars(SingleStageDetector):
@@ -70,13 +71,13 @@ class PointPillars(SingleStageDetector):
         )
 
         x = self.extract_feat(data)
-        bev_feature = x 
+        bev_feature = x
         preds = self.bbox_head(x)
 
         # manual deepcopy ...
         new_preds = []
         for pred in preds:
-            new_pred = {} 
+            new_pred = {}
             for k, v in pred.items():
                 new_pred[k] = v.detach()
 
@@ -87,4 +88,4 @@ class PointPillars(SingleStageDetector):
         if return_loss:
             return boxes, bev_feature, self.bbox_head.loss(example, preds)
         else:
-            return boxes, bev_feature, None 
+            return boxes, bev_feature, None

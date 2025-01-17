@@ -9,6 +9,7 @@ from torch.utils.data.dataloader import default_collate
 from .data_container import DataContainer
 import pdb
 
+
 def collate(batch, samples_per_gpu=1):
     """Puts each data field into a tensor/DataContainer with outer dimension
     batch size.
@@ -97,13 +98,21 @@ def collate_kitti(batch_list, samples_per_gpu=1):
         else:
             for k, v in example.items():
                 example_merged[k].append(v)
-    batch_size = len(example_merged['metadata'])
+    batch_size = len(example_merged["metadata"])
     ret = {}
     # voxel_nums_list = example_merged["num_voxels"]
     # example_merged.pop("num_voxels")
     for key, elems in example_merged.items():
-        if key in ["voxels", "num_points", "num_gt", "voxel_labels", "num_voxels",
-                   "cyv_voxels", "cyv_num_points", "cyv_num_voxels"]:
+        if key in [
+            "voxels",
+            "num_points",
+            "num_gt",
+            "voxel_labels",
+            "num_voxels",
+            "cyv_voxels",
+            "cyv_num_points",
+            "cyv_num_voxels",
+        ]:
             ret[key] = torch.tensor(np.concatenate(elems, axis=0))
         elif key in [
             "gt_boxes",
@@ -141,8 +150,18 @@ def collate_kitti(batch_list, samples_per_gpu=1):
                 )
                 coors.append(coor_pad)
             ret[key] = torch.tensor(np.concatenate(coors, axis=0))
-        elif key in ["anchors", "anchors_mask", "reg_targets", "reg_weights", "labels", "hm", "anno_box",
-                    "ind", "mask", "cat"]:
+        elif key in [
+            "anchors",
+            "anchors_mask",
+            "reg_targets",
+            "reg_weights",
+            "labels",
+            "hm",
+            "anno_box",
+            "ind",
+            "mask",
+            "cat",
+        ]:
 
             ret[key] = defaultdict(list)
             res = []
@@ -152,14 +171,15 @@ def collate_kitti(batch_list, samples_per_gpu=1):
             for kk, vv in ret[key].items():
                 res.append(torch.stack(vv))
             ret[key] = res
-        elif key == 'gt_boxes_and_cls':
+        elif key == "gt_boxes_and_cls":
             ret[key] = torch.tensor(np.stack(elems, axis=0))
-     
+
         else:
             ret[key] = np.stack(elems, axis=0)
 
     return ret
-    
+
+
 def collate_kitti_multi(batch_list, samples_per_gpu=1):
     example_merged = collections.defaultdict(list)
     for example in batch_list:
@@ -170,15 +190,25 @@ def collate_kitti_multi(batch_list, samples_per_gpu=1):
         else:
             for k, v in example.items():
                 example_merged[k].append(v)
-    batch_size = len(example_merged['metadata'])
+    batch_size = len(example_merged["metadata"])
     ret = {}
     # voxel_nums_list = example_merged["num_voxels"]
     # example_merged.pop("num_voxels")
     for key, elems in example_merged.items():
-        if key in ["voxels", "num_points", "num_gt", "voxel_labels", "num_voxels",
-                   "cyv_voxels", "cyv_num_points", "cyv_num_voxels"]:
+        if key in [
+            "voxels",
+            "num_points",
+            "num_gt",
+            "voxel_labels",
+            "num_voxels",
+            "cyv_voxels",
+            "cyv_num_points",
+            "cyv_num_voxels",
+        ]:
             ret[key] = torch.tensor(np.concatenate(elems, axis=0))
-        elif key in ["gt_boxes",]:
+        elif key in [
+            "gt_boxes",
+        ]:
             pdb.set_trace()
             task_max_gts = []
             for task_id in range(len(elems[0])):
@@ -195,7 +225,7 @@ def collate_kitti_multi(batch_list, samples_per_gpu=1):
             ret[key] = res
         elif key == "metadata":
             ret[key] = elems
- 
+
         elif key in ["coordinates", "points", "cyv_coordinates"]:
             coors = []
             for i, coor in enumerate(elems):
@@ -205,10 +235,28 @@ def collate_kitti_multi(batch_list, samples_per_gpu=1):
                 coors.append(coor_pad)
             ret[key] = torch.tensor(np.concatenate(coors, axis=0))
 
-        elif key in ["anchors", "anchors_mask", "reg_targets", "reg_weights", "labels", 
-                     "hm", "anno_box", "ind", "mask", "cat", 
-                     "hm_trajectory", "anno_box_trajectory", "ind_trajectory", "mask_trajectory", "cat_trajectory",
-                     "hm_forecast", "anno_box_forecast", "ind_forecast", "mask_forecast", "cat_forecast"]:
+        elif key in [
+            "anchors",
+            "anchors_mask",
+            "reg_targets",
+            "reg_weights",
+            "labels",
+            "hm",
+            "anno_box",
+            "ind",
+            "mask",
+            "cat",
+            "hm_trajectory",
+            "anno_box_trajectory",
+            "ind_trajectory",
+            "mask_trajectory",
+            "cat_trajectory",
+            "hm_forecast",
+            "anno_box_forecast",
+            "ind_forecast",
+            "mask_forecast",
+            "cat_forecast",
+        ]:
             elements = []
             for i in range(len(elems[0])):
                 element = []
@@ -231,7 +279,12 @@ def collate_kitti_multi(batch_list, samples_per_gpu=1):
 
             ret[key] = res_forecast
 
-        elif key in ['gt_boxes_and_cls', 'gt_boxes_and_cls_trajectory', 'gt_boxes_and_cls_forecast', 'bev_map']:
+        elif key in [
+            "gt_boxes_and_cls",
+            "gt_boxes_and_cls_trajectory",
+            "gt_boxes_and_cls_forecast",
+            "bev_map",
+        ]:
             ret[key] = []
             for i in range(len(elems[0])):
                 el = []

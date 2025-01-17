@@ -10,4 +10,3 @@ if found:
 
 else:
     print("No spconv, sparse convolution disabled!")
-

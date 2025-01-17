@@ -37,7 +37,9 @@ def example_to_device(example, device=None, non_blocking=False) -> dict:
 
             example_torch[k] = []
             for fc in v:
-                example_torch[k].append([res.to(device, non_blocking=non_blocking) for res in fc])
+                example_torch[k].append(
+                    [res.to(device, non_blocking=non_blocking) for res in fc]
+                )
 
         elif k in [
             "voxels",
@@ -49,7 +51,7 @@ def example_to_device(example, device=None, non_blocking=False) -> dict:
             "cyv_voxels",
             "cyv_num_voxels",
             "cyv_coordinates",
-            "cyv_num_points"
+            "cyv_num_points",
         ]:
             # example_torch[k] = v.to(device, non_blocking=non_blocking)
 
@@ -126,7 +128,7 @@ def batch_processor(model, data, train_mode, **kwargs):
 
 
 def batch_processor_ensemble(model1, model2, data, train_mode, **kwargs):
-    assert 0, 'deprecated'
+    assert 0, "deprecated"
     if "local_rank" in kwargs:
         device = torch.device(kwargs["local_rank"])
     else:
@@ -154,7 +156,7 @@ def batch_processor_ensemble(model1, model2, data, train_mode, **kwargs):
 
         merge_list.append(preds_dict1)
 
-    # now get the final prediciton 
+    # now get the final prediciton
     return model1.pred_result(example, merge_list)
 
 
@@ -187,14 +189,16 @@ def build_one_cycle_optimizer(model, optimizer_config, two_stage=False):
     #     )
     # else:
     #     optimizer_func = partial(torch.optim.Adam, amsgrad=optimizer_cfg.amsgrad)
-    optimizer_func = partial(torch.optim.Adam, betas=(0.9, 0.99), amsgrad=optimizer_config.amsgrad)
+    optimizer_func = partial(
+        torch.optim.Adam, betas=(0.9, 0.99), amsgrad=optimizer_config.amsgrad
+    )
     optimizer = OptimWrapper.create(
         optimizer_func,
         3e-3,  # TODO: CHECKING LR HERE !!!
         get_layer_groups(model, two_stage),
         wd=optimizer_config.weight_decay,
         # true_wd=optimizer_config.fixed_wd,
-        true_wd = True,
+        true_wd=True,
         bn_wd=True,
     )
 
@@ -239,8 +243,8 @@ def build_optimizer(model, optimizer_cfg):
         base_wd = optimizer_cfg.get("weight_decay", None)
         # weight_decay must be explicitly specified if mult is specified
         if (
-                "bias_decay_mult" in paramwise_options
-                or "norm_decay_mult" in paramwise_options
+            "bias_decay_mult" in paramwise_options
+            or "norm_decay_mult" in paramwise_options
         ):
             assert base_wd is not None
         # get param-wise options
@@ -284,7 +288,9 @@ def train_detector(model, dataset, cfg, distributed=False, validate=False, logge
     # prepare data loaders
     dataset = dataset if isinstance(dataset, (list, tuple)) else [dataset]
     data_loaders = [
-        build_dataloader(ds, cfg.data.samples_per_gpu, cfg.data.workers_per_gpu, dist=distributed)
+        build_dataloader(
+            ds, cfg.data.samples_per_gpu, cfg.data.workers_per_gpu, dist=distributed
+        )
         for ds in dataset
     ]
 
@@ -302,7 +308,9 @@ def train_detector(model, dataset, cfg, distributed=False, validate=False, logge
         cfg.lr_config = None
     else:
         optimizer = build_optimizer(model, cfg.optimizer)
-        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=cfg.drop_step, gamma=.1)
+        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer, milestones=cfg.drop_step, gamma=0.1
+        )
         # lr_scheduler = None
         cfg.lr_config = None
 
@@ -352,7 +360,16 @@ def train_detector(model, dataset, cfg, distributed=False, validate=False, logge
 
     if cfg.TWO_STAGE:
         for name, weights in model.named_parameters():
-            if "forecast_conv" not in name and "reverse_conv" not in name and "vel" not in name and "rot" not in name and "rvel" not in name and "rrot" not in name:
+            if (
+                "forecast_conv" not in name
+                and "reverse_conv" not in name
+                and "vel" not in name
+                and "rot" not in name
+                and "rvel" not in name
+                and "rrot" not in name
+            ):
                 weights.requires_grad = False
 
-    trainer.run(data_loaders, cfg.workflow, cfg.total_epochs, cfg=cfg, local_rank=cfg.local_rank)
+    trainer.run(
+        data_loaders, cfg.workflow, cfg.total_epochs, cfg=cfg, local_rank=cfg.local_rank
+    )

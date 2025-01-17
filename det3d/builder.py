@@ -26,6 +26,7 @@ def build_voxel_generator(voxel_config):
 
     return voxel_generator
 
+
 def build_db_preprocess(db_prep_config, logger=None):
     logger = logging.getLogger("build_db_preprocess")
     cfg = db_prep_config

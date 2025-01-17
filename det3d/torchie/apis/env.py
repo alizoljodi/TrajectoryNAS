@@ -66,5 +66,5 @@ def get_root_logger(log_level=logging.INFO):
         logger.setLevel("ERROR")
     else:
         logger.setLevel("INFO")
-        
+
     return logger

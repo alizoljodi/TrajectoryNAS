@@ -22,11 +22,11 @@ class TestRasterizer(unittest.TestCase):
         layer_2 = cv2.fillPoly(layer_2, pts=[np.int0(box_2)], color=(0, 0, 255))
 
         rasterizer = Rasterizer()
-        image = rasterizer.combine([layer_1.astype('uint8'), layer_2.astype('uint8')])
+        image = rasterizer.combine([layer_1.astype("uint8"), layer_2.astype("uint8")])
 
         answer = np.zeros((100, 100, 3))
         answer = cv2.fillPoly(answer, pts=[np.int0(box_1)], color=(255, 255, 255))
         answer = cv2.fillPoly(answer, pts=[np.int0(box_2)], color=(0, 0, 255))
-        answer = answer.astype('uint8')
+        answer = answer.astype("uint8")
 
         np.testing.assert_allclose(answer, image)

@@ -7,6 +7,7 @@ This code is based on:
 py-motmetrics at:
 https://github.com/cheind/py-motmetrics
 """
+
 from typing import Any
 
 import numpy as np
@@ -28,7 +29,7 @@ def track_initialization_duration(df: DataFrame, obj_frequencies: DataFrame) -> 
     for gt_tracking_id in obj_frequencies.index:
         # Get matches.
         dfo = df.noraw[df.noraw.OId == gt_tracking_id]
-        notmiss = dfo[dfo.Type != 'MISS']
+        notmiss = dfo[dfo.Type != "MISS"]
 
         if len(notmiss) == 0:
             # Consider only tracked objects.
@@ -40,7 +41,7 @@ def track_initialization_duration(df: DataFrame, obj_frequencies: DataFrame) -> 
             diff = notmiss.index[0][0] - dfo.index[0][0]
 
         # Multiply number of sample differences with approx. sample period (0.5 sec).
-        assert diff >= 0, 'Time difference should be larger than or equal to zero: %.2f'
+        assert diff >= 0, "Time difference should be larger than or equal to zero: %.2f"
         tid += diff * 0.5
 
     matched_tracks = len(obj_frequencies) - missed_tracks
@@ -68,7 +69,7 @@ def longest_gap_duration(df: DataFrame, obj_frequencies: DataFrame) -> float:
     for gt_tracking_id in obj_frequencies.index:
         # Find the frame_ids object is tracked and compute the gaps between those. Take the maximum one for longest gap.
         dfo = df.noraw[df.noraw.OId == gt_tracking_id]
-        matched = set(dfo[dfo.Type != 'MISS'].index.get_level_values(0).values)
+        matched = set(dfo[dfo.Type != "MISS"].index.get_level_values(0).values)
 
         if len(matched) == 0:
             # Ignore untracked objects.
@@ -94,7 +95,7 @@ def longest_gap_duration(df: DataFrame, obj_frequencies: DataFrame) -> float:
             gap = np.maximum(gap, cur_gap)
 
         # Multiply number of sample differences with approx. sample period (0.5 sec).
-        assert gap >= 0, 'Time difference should be larger than or equal to zero: %.2f'
+        assert gap >= 0, "Time difference should be larger than or equal to zero: %.2f"
         lgd += gap * 0.5
 
     # Average LGD over the number of tracks.
@@ -108,8 +109,15 @@ def longest_gap_duration(df: DataFrame, obj_frequencies: DataFrame) -> float:
     return lgd
 
 
-def motar(df: DataFrame, num_matches: int, num_misses: int, num_switches: int, num_false_positives: int,
-          num_objects: int, alpha: float = 1.0) -> float:
+def motar(
+    df: DataFrame,
+    num_matches: int,
+    num_misses: int,
+    num_switches: int,
+    num_false_positives: int,
+    num_objects: int,
+    alpha: float = 1.0,
+) -> float:
     """
     Initializes a MOTAR class which refers to the modified MOTA metric at https://www.nuscenes.org/tracking.
     Note that we use the measured recall, which is not identical to the hypothetical recall of the
@@ -124,7 +132,9 @@ def motar(df: DataFrame, num_matches: int, num_misses: int, num_switches: int, n
     :return: The MOTAR or nan if there are no GT objects.
     """
     recall = num_matches / num_objects
-    nominator = (num_misses + num_switches + num_false_positives) - (1 - recall) * num_objects
+    nominator = (num_misses + num_switches + num_false_positives) - (
+        1 - recall
+    ) * num_objects
     denominator = recall * num_objects
     if denominator == 0:
         motar_val = np.nan
@@ -135,7 +145,13 @@ def motar(df: DataFrame, num_matches: int, num_misses: int, num_switches: int, n
     return motar_val
 
 
-def mota_custom(df: DataFrame, num_misses: int, num_switches: int, num_false_positives: int, num_objects: int) -> float:
+def mota_custom(
+    df: DataFrame,
+    num_misses: int,
+    num_switches: int,
+    num_false_positives: int,
+    num_objects: int,
+) -> float:
     """
     Multiple object tracker accuracy.
     Based on py-motmetric's mota function.
@@ -147,7 +163,7 @@ def mota_custom(df: DataFrame, num_misses: int, num_switches: int, num_false_pos
     :param num_objects: The total number of objects of this class in the GT.
     :return: The MOTA or 0 if below 0.
     """
-    mota = 1. - (num_misses + num_switches + num_false_positives) / num_objects
+    mota = 1.0 - (num_misses + num_switches + num_false_positives) / num_objects
     mota = np.maximum(0, mota)
     return mota
 
@@ -164,7 +180,7 @@ def motp_custom(df: DataFrame, num_detections: float) -> float:
     # Note that the default motmetrics function throws a warning when num_detections == 0.
     if num_detections == 0:
         return np.nan
-    return df.noraw['D'].sum() / num_detections
+    return df.noraw["D"].sum() / num_detections
 
 
 def faf(df: DataFrame, num_false_positives: float, num_frames: float) -> float:
@@ -191,12 +207,12 @@ def num_fragmentations_custom(df: DataFrame, obj_frequencies: DataFrame) -> floa
         # Find first and last time object was not missed (track span). Then count
         # the number switches from NOT MISS to MISS state.
         dfo = df.noraw[df.noraw.OId == o]
-        notmiss = dfo[dfo.Type != 'MISS']
+        notmiss = dfo[dfo.Type != "MISS"]
         if len(notmiss) == 0:
             continue
         first = notmiss.index[0]
         last = notmiss.index[-1]
-        diffs = dfo.loc[first:last].Type.apply(lambda x: 1 if x == 'MISS' else 0).diff()
+        diffs = dfo.loc[first:last].Type.apply(lambda x: 1 if x == "MISS" else 0).diff()
         fra += diffs[diffs == 1].count()
 
     return fra

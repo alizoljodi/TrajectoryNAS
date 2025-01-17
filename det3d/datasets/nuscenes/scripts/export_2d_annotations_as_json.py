@@ -25,8 +25,9 @@ from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.geometry_utils import view_points
 
 
-def post_process_coords(corner_coords: List,
-                        imsize: Tuple[int, int] = (1600, 900)) -> Union[Tuple[float, float, float, float], None]:
+def post_process_coords(
+    corner_coords: List, imsize: Tuple[int, int] = (1600, 900)
+) -> Union[Tuple[float, float, float, float], None]:
     """
     Get the intersection of the convex hull of the reprojected bbox corners and the image canvas, return None if no
     intersection.
@@ -39,7 +40,9 @@ def post_process_coords(corner_coords: List,
 
     if polygon_from_2d_box.intersects(img_canvas):
         img_intersection = polygon_from_2d_box.intersection(img_canvas)
-        intersection_coords = np.array([coord for coord in img_intersection.exterior.coords])
+        intersection_coords = np.array(
+            [coord for coord in img_intersection.exterior.coords]
+        )
 
         min_x = min(intersection_coords[:, 0])
         min_y = min(intersection_coords[:, 1])
@@ -51,13 +54,15 @@ def post_process_coords(corner_coords: List,
         return None
 
 
-def generate_record(ann_rec: dict,
-                    x1: float,
-                    y1: float,
-                    x2: float,
-                    y2: float,
-                    sample_data_token: str,
-                    filename: str) -> OrderedDict:
+def generate_record(
+    ann_rec: dict,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
+    sample_data_token: str,
+    filename: str,
+) -> OrderedDict:
     """
     Generate one 2D annotation record given various informations on top of the 2D bounding box coordinates.
     :param ann_rec: Original 3d annotation record.
@@ -70,27 +75,27 @@ def generate_record(ann_rec: dict,
     :return: A sample 2D annotation record.
     """
     repro_rec = OrderedDict()
-    repro_rec['sample_data_token'] = sample_data_token
+    repro_rec["sample_data_token"] = sample_data_token
 
     relevant_keys = [
-        'attribute_tokens',
-        'category_name',
-        'instance_token',
-        'next',
-        'num_lidar_pts',
-        'num_radar_pts',
-        'prev',
-        'sample_annotation_token',
-        'sample_data_token',
-        'visibility_token',
+        "attribute_tokens",
+        "category_name",
+        "instance_token",
+        "next",
+        "num_lidar_pts",
+        "num_radar_pts",
+        "prev",
+        "sample_annotation_token",
+        "sample_data_token",
+        "visibility_token",
     ]
 
     for key, value in ann_rec.items():
         if key in relevant_keys:
             repro_rec[key] = value
 
-    repro_rec['bbox_corners'] = [x1, y1, x2, y2]
-    repro_rec['filename'] = filename
+    repro_rec["bbox_corners"] = [x1, y1, x2, y2]
+    repro_rec["filename"] = filename
 
     return repro_rec
 
@@ -104,40 +109,44 @@ def get_2d_boxes(sample_data_token: str, visibilities: List[str]) -> List[Ordere
     """
 
     # Get the sample data and the sample corresponding to that sample data.
-    sd_rec = nusc.get('sample_data', sample_data_token)
+    sd_rec = nusc.get("sample_data", sample_data_token)
 
-    assert sd_rec['sensor_modality'] == 'camera', 'Error: get_2d_boxes only works for camera sample_data!'
-    if not sd_rec['is_key_frame']:
-        raise ValueError('The 2D re-projections are available only for keyframes.')
+    assert (
+        sd_rec["sensor_modality"] == "camera"
+    ), "Error: get_2d_boxes only works for camera sample_data!"
+    if not sd_rec["is_key_frame"]:
+        raise ValueError("The 2D re-projections are available only for keyframes.")
 
-    s_rec = nusc.get('sample', sd_rec['sample_token'])
+    s_rec = nusc.get("sample", sd_rec["sample_token"])
 
     # Get the calibrated sensor and ego pose record to get the transformation matrices.
-    cs_rec = nusc.get('calibrated_sensor', sd_rec['calibrated_sensor_token'])
-    pose_rec = nusc.get('ego_pose', sd_rec['ego_pose_token'])
-    camera_intrinsic = np.array(cs_rec['camera_intrinsic'])
+    cs_rec = nusc.get("calibrated_sensor", sd_rec["calibrated_sensor_token"])
+    pose_rec = nusc.get("ego_pose", sd_rec["ego_pose_token"])
+    camera_intrinsic = np.array(cs_rec["camera_intrinsic"])
 
     # Get all the annotation with the specified visibilties.
-    ann_recs = [nusc.get('sample_annotation', token) for token in s_rec['anns']]
-    ann_recs = [ann_rec for ann_rec in ann_recs if (ann_rec['visibility_token'] in visibilities)]
+    ann_recs = [nusc.get("sample_annotation", token) for token in s_rec["anns"]]
+    ann_recs = [
+        ann_rec for ann_rec in ann_recs if (ann_rec["visibility_token"] in visibilities)
+    ]
 
     repro_recs = []
 
     for ann_rec in ann_recs:
         # Augment sample_annotation with token information.
-        ann_rec['sample_annotation_token'] = ann_rec['token']
-        ann_rec['sample_data_token'] = sample_data_token
+        ann_rec["sample_annotation_token"] = ann_rec["token"]
+        ann_rec["sample_data_token"] = sample_data_token
 
         # Get the box in global coordinates.
-        box = nusc.get_box(ann_rec['token'])
+        box = nusc.get_box(ann_rec["token"])
 
         # Move them to the ego-pose frame.
-        box.translate(-np.array(pose_rec['translation']))
-        box.rotate(Quaternion(pose_rec['rotation']).inverse)
+        box.translate(-np.array(pose_rec["translation"]))
+        box.rotate(Quaternion(pose_rec["rotation"]).inverse)
 
         # Move them to the calibrated sensor frame.
-        box.translate(-np.array(cs_rec['translation']))
-        box.rotate(Quaternion(cs_rec['rotation']).inverse)
+        box.translate(-np.array(cs_rec["translation"]))
+        box.rotate(Quaternion(cs_rec["rotation"]).inverse)
 
         # Filter out the corners that are not in front of the calibrated sensor.
         corners_3d = box.corners()
@@ -145,7 +154,9 @@ def get_2d_boxes(sample_data_token: str, visibilities: List[str]) -> List[Ordere
         corners_3d = corners_3d[:, in_front]
 
         # Project 3d box to 2d.
-        corner_coords = view_points(corners_3d, camera_intrinsic, True).T[:, :2].tolist()
+        corner_coords = (
+            view_points(corners_3d, camera_intrinsic, True).T[:, :2].tolist()
+        )
 
         # Keep only corners that fall within the image.
         final_coords = post_process_coords(corner_coords)
@@ -157,7 +168,9 @@ def get_2d_boxes(sample_data_token: str, visibilities: List[str]) -> List[Ordere
             min_x, min_y, max_x, max_y = final_coords
 
         # Generate dictionary record to be included in the .json file.
-        repro_rec = generate_record(ann_rec, min_x, min_y, max_x, max_y, sample_data_token, sd_rec['filename'])
+        repro_rec = generate_record(
+            ann_rec, min_x, min_y, max_x, max_y, sample_data_token, sd_rec["filename"]
+        )
         repro_recs.append(repro_rec)
 
     return repro_recs
@@ -169,12 +182,15 @@ def main(args):
     print("Generating 2D reprojections of the nuScenes dataset")
 
     # Get tokens for all camera images.
-    sample_data_camera_tokens = [s['token'] for s in nusc.sample_data if (s['sensor_modality'] == 'camera') and
-                                 s['is_key_frame']]
+    sample_data_camera_tokens = [
+        s["token"]
+        for s in nusc.sample_data
+        if (s["sensor_modality"] == "camera") and s["is_key_frame"]
+    ]
 
     # For debugging purposes: Only produce the first n images.
     if args.image_limit != -1:
-         sample_data_camera_tokens = sample_data_camera_tokens[:args.image_limit]
+        sample_data_camera_tokens = sample_data_camera_tokens[: args.image_limit]
 
     # Loop through the records and apply the re-projection algorithm.
     reprojections = []
@@ -186,21 +202,49 @@ def main(args):
     dest_path = os.path.join(args.dataroot, args.version)
     if not os.path.exists(dest_path):
         os.makedirs(dest_path)
-    with open(os.path.join(args.dataroot, args.version, args.filename), 'w') as fh:
+    with open(os.path.join(args.dataroot, args.version, args.filename), "w") as fh:
         json.dump(reprojections, fh, sort_keys=True, indent=4)
 
-    print("Saved the 2D re-projections under {}".format(os.path.join(args.dataroot, args.version, args.filename)))
+    print(
+        "Saved the 2D re-projections under {}".format(
+            os.path.join(args.dataroot, args.version, args.filename)
+        )
+    )
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Export 2D annotations from reprojections to a .json file.',
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--dataroot', type=str, default='/data/sets/nuscenes', help="Path where nuScenes is saved.")
-    parser.add_argument('--version', type=str, default='v1.0-trainval', help='Dataset version.')
-    parser.add_argument('--filename', type=str, default='image_annotations.json', help='Output filename.')
-    parser.add_argument('--visibilities', type=str, default=['', '1', '2', '3', '4'],
-                        help='Visibility bins, the higher the number the higher the visibility.', nargs='+')
-    parser.add_argument('--image_limit', type=int, default=-1, help='Number of images to process or -1 to process all.')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Export 2D annotations from reprojections to a .json file.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument(
+        "--dataroot",
+        type=str,
+        default="/data/sets/nuscenes",
+        help="Path where nuScenes is saved.",
+    )
+    parser.add_argument(
+        "--version", type=str, default="v1.0-trainval", help="Dataset version."
+    )
+    parser.add_argument(
+        "--filename",
+        type=str,
+        default="image_annotations.json",
+        help="Output filename.",
+    )
+    parser.add_argument(
+        "--visibilities",
+        type=str,
+        default=["", "1", "2", "3", "4"],
+        help="Visibility bins, the higher the number the higher the visibility.",
+        nargs="+",
+    )
+    parser.add_argument(
+        "--image_limit",
+        type=int,
+        default=-1,
+        help="Number of images to process or -1 to process all.",
+    )
     args = parser.parse_args()
 
     nusc = NuScenes(dataroot=args.dataroot, version=args.version)

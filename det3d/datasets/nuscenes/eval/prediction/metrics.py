@@ -14,7 +14,7 @@ from nuscenes.prediction.input_representation.static_layers import load_all_maps
 
 
 def returns_2d_array(function):
-    """ Makes sure that the metric returns an array of shape [batch_size, num_modes]. """
+    """Makes sure that the metric returns an array of shape [batch_size, num_modes]."""
 
     def _returns_array(*args, **kwargs):
         result = function(*args, **kwargs)
@@ -31,30 +31,39 @@ def returns_2d_array(function):
 
 
 @returns_2d_array
-def mean_distances(stacked_trajs: np.ndarray,
-                   stacked_ground_truth: np.ndarray) -> np.ndarray:
+def mean_distances(
+    stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarray
+) -> np.ndarray:
     """
     Efficiently compute mean L2 norm between trajectories and ground truths (pairwise over states).
     :param stacked_trajs: Array of [batch_size, num_modes, horizon_length, state_dim].
     :param stacked_ground_truth: Array of [batch_size, num_modes, horizon_length, state_dim].
     :return: Array of mean L2 norms as [batch_size, num_modes].
     """
-    return np.mean(np.linalg.norm(stacked_trajs - stacked_ground_truth, axis=-1), axis=-1)
+    return np.mean(
+        np.linalg.norm(stacked_trajs - stacked_ground_truth, axis=-1), axis=-1
+    )
 
 
 @returns_2d_array
-def max_distances(stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarray) -> np.ndarray:
+def max_distances(
+    stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarray
+) -> np.ndarray:
     """
     Efficiently compute max L2 norm between trajectories and ground truths (pairwise over states).
     :pram stacked_trajs: Array of shape [num_modes, horizon_length, state_dim].
     :pram stacked_ground_truth: Array of [num_modes, horizon_length, state_dim].
     :return: Array of max L2 norms as [num_modes].
     """
-    return np.max(np.linalg.norm(stacked_trajs - stacked_ground_truth, axis=-1), axis=-1)
+    return np.max(
+        np.linalg.norm(stacked_trajs - stacked_ground_truth, axis=-1), axis=-1
+    )
 
 
 @returns_2d_array
-def final_distances(stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarray) -> np.ndarray:
+def final_distances(
+    stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarray
+) -> np.ndarray:
     """
     Efficiently compute the L2 norm between the last points in the trajectory.
     :param stacked_trajs: Array of shape [num_modes, horizon_length, state_dim].
@@ -63,13 +72,17 @@ def final_distances(stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarray)
     """
     # We use take to index the elements in the last dimension so that we can also
     # apply this function for a batch
-    diff_of_last = np.take(stacked_trajs, [-1], -2).squeeze() - np.take(stacked_ground_truth, [-1], -2).squeeze()
+    diff_of_last = (
+        np.take(stacked_trajs, [-1], -2).squeeze()
+        - np.take(stacked_ground_truth, [-1], -2).squeeze()
+    )
     return np.linalg.norm(diff_of_last, axis=-1)
 
 
 @returns_2d_array
-def miss_max_distances(stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarray,
-                       tolerance: float) -> np.array:
+def miss_max_distances(
+    stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarray, tolerance: float
+) -> np.array:
     """
     Efficiently compute 'miss' metric between trajectories and ground truths.
     :param stacked_trajs: Array of shape [num_modes, horizon_length, state_dim].
@@ -81,9 +94,9 @@ def miss_max_distances(stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarr
 
 
 @returns_2d_array
-def rank_metric_over_top_k_modes(metric_results: np.ndarray,
-                                 mode_probabilities: np.ndarray,
-                                 ranking_func: str) -> np.ndarray:
+def rank_metric_over_top_k_modes(
+    metric_results: np.ndarray, mode_probabilities: np.ndarray, ranking_func: str
+) -> np.ndarray:
     """
     Compute a metric over all trajectories ranked by probability of each trajectory.
     :param metric_results: 1-dimensional array of shape [batch_size, num_modes].
@@ -98,7 +111,9 @@ def rank_metric_over_top_k_modes(metric_results: np.ndarray,
     elif ranking_func == "max":
         func = np.maximum.accumulate
     else:
-        raise ValueError(f"Parameter ranking_func must be one of min or max. Received {ranking_func}")
+        raise ValueError(
+            f"Parameter ranking_func must be one of min or max. Received {ranking_func}"
+        )
 
     p_sorted = np.flip(mode_probabilities.argsort(axis=-1), axis=-1)
     indices = np.indices(metric_results.shape)
@@ -108,26 +123,35 @@ def rank_metric_over_top_k_modes(metric_results: np.ndarray,
     return func(sorted_metrics, axis=-1)
 
 
-def miss_rate_top_k(stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarray,
-                    mode_probabilities: np.ndarray,
-                    tolerance: float) -> np.ndarray:
-    """ Compute the miss rate over the top k modes. """
+def miss_rate_top_k(
+    stacked_trajs: np.ndarray,
+    stacked_ground_truth: np.ndarray,
+    mode_probabilities: np.ndarray,
+    tolerance: float,
+) -> np.ndarray:
+    """Compute the miss rate over the top k modes."""
 
     miss_rate = miss_max_distances(stacked_trajs, stacked_ground_truth, tolerance)
     return rank_metric_over_top_k_modes(miss_rate, mode_probabilities, "min")
 
 
-def min_ade_k(stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarray,
-              mode_probabilities: np.ndarray) -> np.ndarray:
-    """ Compute the min ade over the top k modes. """
+def min_ade_k(
+    stacked_trajs: np.ndarray,
+    stacked_ground_truth: np.ndarray,
+    mode_probabilities: np.ndarray,
+) -> np.ndarray:
+    """Compute the min ade over the top k modes."""
 
     ade = mean_distances(stacked_trajs, stacked_ground_truth)
     return rank_metric_over_top_k_modes(ade, mode_probabilities, "min")
 
 
-def min_fde_k(stacked_trajs: np.ndarray, stacked_ground_truth: np.ndarray,
-              mode_probabilities: np.ndarray) -> np.ndarray:
-    """ Compute the min fde over the top k modes. """
+def min_fde_k(
+    stacked_trajs: np.ndarray,
+    stacked_ground_truth: np.ndarray,
+    mode_probabilities: np.ndarray,
+) -> np.ndarray:
+    """Compute the min fde over the top k modes."""
 
     fde = final_distances(stacked_trajs, stacked_ground_truth)
     return rank_metric_over_top_k_modes(fde, mode_probabilities, "min")
@@ -145,7 +169,7 @@ def stack_ground_truth(ground_truth: np.ndarray, num_modes: int) -> np.ndarray:
 
 
 class SerializableFunction(abc.ABC):
-    """ Function that can be serialized/deserialized to/from json. """
+    """Function that can be serialized/deserialized to/from json."""
 
     @abc.abstractmethod
     def serialize(self) -> Dict[str, Any]:
@@ -153,12 +177,14 @@ class SerializableFunction(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def name(self,) -> str:
+    def name(
+        self,
+    ) -> str:
         pass
 
 
 class Aggregator(SerializableFunction):
-    """ Function that can aggregate many metrics across predictions. """
+    """Function that can aggregate many metrics across predictions."""
 
     @abc.abstractmethod
     def __call__(self, array: np.ndarray, **kwargs) -> List[float]:
@@ -171,11 +197,13 @@ class RowMean(Aggregator):
         return array.mean(axis=0).tolist()
 
     def serialize(self) -> Dict[str, Any]:
-        return {'name': self.name}
+        return {"name": self.name}
 
     @property
-    def name(self,) -> str:
-        return 'RowMean'
+    def name(
+        self,
+    ) -> str:
+        return "RowMean"
 
 
 class Metric(SerializableFunction):
@@ -186,18 +214,21 @@ class Metric(SerializableFunction):
 
     @property
     @abc.abstractmethod
-    def aggregators(self,) -> List[Aggregator]:
+    def aggregators(
+        self,
+    ) -> List[Aggregator]:
         pass
 
     @property
     @abc.abstractmethod
-    def shape(self,) -> str:
+    def shape(
+        self,
+    ) -> str:
         pass
 
 
-def desired_number_of_modes(results: np.ndarray,
-                            k_to_report: List[int]) -> np.ndarray:
-    """ Ensures we return len(k_to_report) values even when results has less modes than what we want. """
+def desired_number_of_modes(results: np.ndarray, k_to_report: List[int]) -> np.ndarray:
+    """Ensures we return len(k_to_report) values even when results has less modes than what we want."""
     return results[:, [min(k, results.shape[1]) - 1 for k in k_to_report]]
 
 
@@ -215,21 +246,27 @@ class MinADEK(Metric):
 
     def __call__(self, ground_truth: np.ndarray, prediction: Prediction) -> np.ndarray:
         ground_truth = stack_ground_truth(ground_truth, prediction.number_of_modes)
-        results = min_ade_k(prediction.prediction, ground_truth, prediction.probabilities)
+        results = min_ade_k(
+            prediction.prediction, ground_truth, prediction.probabilities
+        )
         return desired_number_of_modes(results, self.k_to_report)
 
     def serialize(self) -> Dict[str, Any]:
-        return {'k_to_report': self.k_to_report,
-                'name': self.name,
-                'aggregators': [agg.serialize() for agg in self.aggregators]}
+        return {
+            "k_to_report": self.k_to_report,
+            "name": self.name,
+            "aggregators": [agg.serialize() for agg in self.aggregators],
+        }
 
     @property
-    def aggregators(self,) -> List[Aggregator]:
+    def aggregators(
+        self,
+    ) -> List[Aggregator]:
         return self._aggregators
 
     @property
     def name(self):
-        return 'MinADEK'
+        return "MinADEK"
 
     @property
     def shape(self):
@@ -250,16 +287,22 @@ class MinFDEK(Metric):
 
     def __call__(self, ground_truth: np.ndarray, prediction: Prediction) -> np.ndarray:
         ground_truth = stack_ground_truth(ground_truth, prediction.number_of_modes)
-        results = min_fde_k(prediction.prediction, ground_truth, prediction.probabilities)
+        results = min_fde_k(
+            prediction.prediction, ground_truth, prediction.probabilities
+        )
         return desired_number_of_modes(results, self.k_to_report)
 
     def serialize(self) -> Dict[str, Any]:
-        return {'k_to_report': self.k_to_report,
-                'name': self.name,
-                'aggregators': [agg.serialize() for agg in self.aggregators]}
+        return {
+            "k_to_report": self.k_to_report,
+            "name": self.name,
+            "aggregators": [agg.serialize() for agg in self.aggregators],
+        }
 
     @property
-    def aggregators(self,) -> List[Aggregator]:
+    def aggregators(
+        self,
+    ) -> List[Aggregator]:
         return self._aggregators
 
     @property
@@ -273,8 +316,12 @@ class MinFDEK(Metric):
 
 class MissRateTopK(Metric):
 
-    def __init__(self, k_to_report: List[int], aggregators: List[Aggregator],
-                 tolerance: float = 2.):
+    def __init__(
+        self,
+        k_to_report: List[int],
+        aggregators: List[Aggregator],
+        tolerance: float = 2.0,
+    ):
         """
         If any point in the prediction is more than tolerance meters from the ground truth, it is a miss.
         This metric computes the fraction of predictions that are misses over the top k most likely predictions.
@@ -288,18 +335,26 @@ class MissRateTopK(Metric):
 
     def __call__(self, ground_truth: np.ndarray, prediction: Prediction) -> np.ndarray:
         ground_truth = stack_ground_truth(ground_truth, prediction.number_of_modes)
-        results = miss_rate_top_k(prediction.prediction, ground_truth,
-                                  prediction.probabilities, self.tolerance)
+        results = miss_rate_top_k(
+            prediction.prediction,
+            ground_truth,
+            prediction.probabilities,
+            self.tolerance,
+        )
         return desired_number_of_modes(results, self.k_to_report)
 
     def serialize(self) -> Dict[str, Any]:
-        return {'k_to_report': self.k_to_report,
-                'name': 'MissRateTopK',
-                'aggregators': [agg.serialize() for agg in self.aggregators],
-                'tolerance': self.tolerance}
+        return {
+            "k_to_report": self.k_to_report,
+            "name": "MissRateTopK",
+            "aggregators": [agg.serialize() for agg in self.aggregators],
+            "tolerance": self.tolerance,
+        }
 
     @property
-    def aggregators(self,) -> List[Aggregator]:
+    def aggregators(
+        self,
+    ) -> List[Aggregator]:
         return self._aggregators
 
     @property
@@ -339,14 +394,20 @@ class OffRoadRate(Metric):
         masks = {}
         for map_name, map_api in maps.items():
 
-            masks[map_name] = map_api.get_map_mask(patch_box=None, patch_angle=0, layer_names=['drivable_area'],
-                                                   canvas_size=None)[0]
+            masks[map_name] = map_api.get_map_mask(
+                patch_box=None,
+                patch_angle=0,
+                layer_names=["drivable_area"],
+                canvas_size=None,
+            )[0]
 
         return masks
 
     @staticmethod
-    def interpolate_path(mode: np.ndarray, number_of_points: int) -> Tuple[np.ndarray, np.ndarray]:
-        """ Interpolate trajectory with a cubic spline if there are enough points. """
+    def interpolate_path(
+        mode: np.ndarray, number_of_points: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Interpolate trajectory with a cubic spline if there are enough points."""
 
         # interpolate.splprep needs unique points.
         # We use a loop as opposed to np.unique because
@@ -366,8 +427,12 @@ class OffRoadRate(Metric):
         if unique_points.shape[0] <= 3:
             return unique_points[:, 0], unique_points[:, 1]
         else:
-            knots, _ = interpolate.splprep([unique_points[:, 0], unique_points[:, 1]], k=3, s=0.1)
-            x_interpolated, y_interpolated = interpolate.splev(np.linspace(0, 1, number_of_points), knots)
+            knots, _ = interpolate.splprep(
+                [unique_points[:, 0], unique_points[:, 1]], k=3, s=0.1
+            )
+            x_interpolated, y_interpolated = interpolate.splev(
+                np.linspace(0, 1, number_of_points), knots
+            )
             return x_interpolated, y_interpolated
 
     def __call__(self, ground_truth: np.ndarray, prediction: Prediction) -> np.ndarray:
@@ -386,7 +451,9 @@ class OffRoadRate(Metric):
         for mode in prediction.prediction:
 
             # Fit a cubic spline to the trajectory and interpolate with 200 points
-            x_interpolated, y_interpolated = self.interpolate_path(mode, self.number_of_points)
+            x_interpolated, y_interpolated = self.interpolate_path(
+                mode, self.number_of_points
+            )
 
             # x coordinate -> col, y coordinate -> row
             # Mask has already been flipped over y-axis
@@ -396,23 +463,27 @@ class OffRoadRate(Metric):
             row_out_of_bounds = np.any(index_row >= max_row) or np.any(index_row < 0)
             col_out_of_bounds = np.any(index_col >= max_col) or np.any(index_col < 0)
             out_of_bounds = row_out_of_bounds or col_out_of_bounds
-            
+
             if out_of_bounds or not np.all(drivable_area[index_row, index_col]):
                 n_violations += 1
 
         return np.array([n_violations / prediction.prediction.shape[0]])
 
     def serialize(self) -> Dict[str, Any]:
-        return {'name': self.name,
-                'aggregators': [agg.serialize() for agg in self.aggregators]}
+        return {
+            "name": self.name,
+            "aggregators": [agg.serialize() for agg in self.aggregators],
+        }
 
     @property
-    def aggregators(self,) -> List[Aggregator]:
+    def aggregators(
+        self,
+    ) -> List[Aggregator]:
         return self._aggregators
 
     @property
     def name(self):
-        return 'OffRoadRate'
+        return "OffRoadRate"
 
     @property
     def shape(self):
@@ -420,29 +491,42 @@ class OffRoadRate(Metric):
 
 
 def deserialize_aggregator(config: Dict[str, Any]) -> Aggregator:
-    """ Helper for deserializing Aggregators. """
-    if config['name'] == 'RowMean':
+    """Helper for deserializing Aggregators."""
+    if config["name"] == "RowMean":
         return RowMean()
     else:
         raise ValueError(f"Cannot deserialize Aggregator {config['name']}.")
 
 
 def deserialize_metric(config: Dict[str, Any], helper: PredictHelper) -> Metric:
-    """ Helper for deserializing Metrics. """
-    if config['name'] == 'MinADEK':
-        return MinADEK(config['k_to_report'], [deserialize_aggregator(agg) for agg in config['aggregators']])
-    elif config['name'] == 'MinFDEK':
-        return MinFDEK(config['k_to_report'], [deserialize_aggregator(agg) for agg in config['aggregators']])
-    elif config['name'] == 'MissRateTopK':
-        return MissRateTopK(config['k_to_report'], [deserialize_aggregator(agg) for agg in config['aggregators']],
-                            tolerance=config['tolerance'])
-    elif config['name'] == 'OffRoadRate':
-        return OffRoadRate(helper, [deserialize_aggregator(agg) for agg in config['aggregators']])
+    """Helper for deserializing Metrics."""
+    if config["name"] == "MinADEK":
+        return MinADEK(
+            config["k_to_report"],
+            [deserialize_aggregator(agg) for agg in config["aggregators"]],
+        )
+    elif config["name"] == "MinFDEK":
+        return MinFDEK(
+            config["k_to_report"],
+            [deserialize_aggregator(agg) for agg in config["aggregators"]],
+        )
+    elif config["name"] == "MissRateTopK":
+        return MissRateTopK(
+            config["k_to_report"],
+            [deserialize_aggregator(agg) for agg in config["aggregators"]],
+            tolerance=config["tolerance"],
+        )
+    elif config["name"] == "OffRoadRate":
+        return OffRoadRate(
+            helper, [deserialize_aggregator(agg) for agg in config["aggregators"]]
+        )
     else:
         raise ValueError(f"Cannot deserialize function {config['name']}.")
 
 
-def flatten_metrics(results: Dict[str, Any], metrics: List[Metric]) -> Dict[str, List[float]]:
+def flatten_metrics(
+    results: Dict[str, Any], metrics: List[Metric]
+) -> Dict[str, List[float]]:
     """
     Collapses results into a 2D table represented by a dictionary mapping the metric name to
     the metric values.
@@ -459,10 +543,10 @@ def flatten_metrics(results: Dict[str, Any], metrics: List[Metric]) -> Dict[str,
 
         metric_class = metric_names[metric_name]
 
-        if hasattr(metric_class, 'k_to_report'):
-            for value, k in zip(values['RowMean'], metric_class.k_to_report):
+        if hasattr(metric_class, "k_to_report"):
+            for value, k in zip(values["RowMean"], metric_class.k_to_report):
                 flattened_metrics[f"{metric_name}_{k}"] = value
         else:
-            flattened_metrics[metric_name] = values['RowMean']
+            flattened_metrics[metric_name] = values["RowMean"]
 
     return flattened_metrics
