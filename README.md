@@ -1,8 +1,15 @@
 
-# Simulated Annealing for Neural Network Optimization
+# TrajectoryNAS: A Neural Architecture Search for Trajectory Prediction
 
-This script uses simulated annealing to optimize neural network configurations. The primary goal is to identify the best hyperparameter settings for a 3D detection model using CenterPoint on the NuScenes dataset.
+This paper, titled TrajectoryNAS, focuses on leveraging Neural Architecture Search (NAS) to enhance the prediction of future trajectories of objects surrounding autonomous systems, with a particular emphasis on autonomous driving (AD). Predicting these trajectories accurately is critical for ensuring safety, avoiding accidents, and maintaining efficient traffic flow, especially in dynamic and stochastic environments where the actions of vehicles and pedestrians are unpredictable.
 
+The study underscores the importance of trajectory prediction in Simultaneous Localization and Mapping (SLAM), where accurate trajectory forecasts can refine object localization and provide critical information about static and dynamic entities in the environment. By enhancing SLAM with predictive capabilities, autonomous systems can make better-informed decisions, reducing risks in complex scenarios.
+
+TrajectoryNAS explores the utility of both 2D and 3D data in this domain. Optical cameras are highlighted for their strength in classification tasks such as recognizing object types, lane markers, and traffic signs, while their performance in measuring distances and velocities is comparatively weaker. Radars complement cameras by offering robust distance and velocity measurements, whereas LIDAR technology stands out as a preferred representation due to its unparalleled accuracy in distance and velocity estimation. LIDAR’s precision makes it particularly suitable for scene understanding applications in autonomous driving and robotics.
+
+The paper also investigates the representation of 3D data in various formats, including depth images, point clouds, meshes, and volumetric grids, to optimize trajectory prediction. The integration of NAS in this context allows for an automated and efficient search for the best-performing neural architectures tailored to trajectory prediction tasks. By automating the design of predictive models, TrajectoryNAS seeks to maximize accuracy and efficiency, ensuring that AD systems can anticipate and adapt to dynamic environments effectively.
+
+In summary, TrajectoryNAS presents a novel approach to improving trajectory prediction for autonomous vehicles, combining the power of NAS with advanced sensor data to deliver safer and more reliable autonomous driving solutions.
 ---
 
 ## Setup
